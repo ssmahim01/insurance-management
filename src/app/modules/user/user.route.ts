@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.post(
   "/create-user",
-  checkAuth(Role.SUPER_ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT, Role.AGENT_LEADER),
   multerUpload.single("picture"),
   validateRequest(createUserZodSchema),
   UserControllers.createUser,
