@@ -36,12 +36,12 @@ const staffLogin = async (
     );
   }
 
-  if (user.role === Role.CUSTOMER) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Customers must login using OTP",
-    );
-  }
+  // if (user.role === Role.CUSTOMER) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     "Customers must login using OTP",
+  //   );
+  // }
 
   const isPasswordMatched =
     await bcryptjs.compare(
@@ -71,9 +71,9 @@ const staffLogin = async (
   };
 };
 
-const sendOtp = async (phone: string) => {
+const sendOtp = async (phoneNumber: string) => {
   const user = await User.findOne({
-    phone,
+    phone: phoneNumber,
     role: Role.CUSTOMER,
   });
 
@@ -86,10 +86,10 @@ const sendOtp = async (phone: string) => {
 
   const otp = generateOTP();
 
-  await saveOTP(phone, otp);
+  await saveOTP(phoneNumber, otp);
 
   await sendSMS(
-    phone,
+    phoneNumber,
     `Your OTP is ${otp}`
   );
 

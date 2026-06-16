@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.post(
   "/staff-login",
-  validateRequest(staffLoginZodSchema),
+  // validateRequest(staffLoginZodSchema),
   AuthControllers.staffLogin,
 );
 

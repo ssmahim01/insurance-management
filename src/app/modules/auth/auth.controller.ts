@@ -8,67 +8,54 @@ import AppError from "../../errorHelpers/appError";
 import { setAuthCookie } from "../../utils/setCookie";
 import { JwtPayload } from "jsonwebtoken";
 
-const staffLogin = catchAsync(
-  async (req: Request, res: Response) => {
-    const { phone, password } = req.body;
+const staffLogin = catchAsync(async (req: Request, res: Response) => {
+  const { phoneNumber, password } = req.body;
 
-    const loginInfo = await AuthServices.staffLogin(
-      phone,
-      password,
-    );
+  const loginInfo = await AuthServices.staffLogin(phoneNumber, password);
 
-    setAuthCookie(res, {
-      accessToken: loginInfo.accessToken,
-      refreshToken: loginInfo.refreshToken,
-    });
+  setAuthCookie(res, {
+    accessToken: loginInfo.accessToken,
+    refreshToken: loginInfo.refreshToken,
+  });
 
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Login Successfully",
-      data: loginInfo,
-    });
-  },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Login Successfully",
+    data: loginInfo,
+  });
+});
 
-const sendOtp = catchAsync(
-  async (req: Request, res: Response) => {
-    const { phone } = req.body;
+const sendOtp = catchAsync(async (req: Request, res: Response) => {
+  const { phone } = req.body;
 
-    await AuthServices.sendOtp(phone);
+  await AuthServices.sendOtp(phone);
 
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "OTP sent successfully",
-      data: null,
-    });
-  },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "OTP sent successfully",
+    data: null,
+  });
+});
 
-const verifyOtp = catchAsync(
-  async (req: Request, res: Response) => {
-    const { phone, otp } = req.body;
+const verifyOtp = catchAsync(async (req: Request, res: Response) => {
+  const { phone, otp } = req.body;
 
-    const loginInfo =
-      await AuthServices.verifyOtp(
-        phone,
-        otp,
-      );
+  const loginInfo = await AuthServices.verifyOtp(phone, otp);
 
-    setAuthCookie(res, {
-      accessToken: loginInfo.accessToken,
-      refreshToken: loginInfo.refreshToken,
-    });
+  setAuthCookie(res, {
+    accessToken: loginInfo.accessToken,
+    refreshToken: loginInfo.refreshToken,
+  });
 
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Login Successfully",
-      data: loginInfo,
-    });
-  },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Login Successfully",
+    data: loginInfo,
+  });
+});
 
 const getNewAccessToken = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {

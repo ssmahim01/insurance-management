@@ -13,7 +13,7 @@ import { Types } from "mongoose";
 const createUserService = async (payload: Partial<IUser>) => {
   console.log("User payload ", payload)
   const isExistUser = await User.findOne({
-    phone: payload.phone,
+    phone: payload.phone
   });
 
   if (isExistUser) {
