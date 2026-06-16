@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { User } from "../modules/user/user.model";
 import { Role } from "../modules/user/user.interface";
+import { envVars } from "../config/env";
 
 export const seedAdmin = async () => {
   try {
@@ -14,13 +15,13 @@ export const seedAdmin = async () => {
     }
 
     const hashedPassword = await bcrypt.hash(
-      "Admin@123",
-      10,
+      envVars.SUPER_ADMIN_PASS,
+       Number(envVars.BCRYPT_SALT_ROUND)
     );
 
     const admin = await User.create({
       name: "Super Admin",
-      phone: "01700000000",
+      phone: envVars.SUPER_ADMIN_PHONE,
       password: hashedPassword,
       role: Role.SUPER_ADMIN,
       isVerified: true,

@@ -1,13 +1,10 @@
 import express, { Request, Response } from "express"
-// import { globalErrorHandler } from "./app/middlewares/globalErrorHandler"
 import cors from "cors"
-// import notFound from "./app/middlewares/notFound"
 import cookieParser from "cookie-parser";
 import { router } from "./app/routes";
 import { globalErrorHandler } from "./app/middlewares/globalErrorHandler";
 import notFound from "./app/middlewares/notFound";
 import { envVars } from "./app/config/env";
-// import { envVars } from "./app/config/env"
 import dns from "dns"
 dns.setServers(["1.1.1.1", "8.8.8.8"])
 

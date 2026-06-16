@@ -14,7 +14,11 @@ import AppError from "../../errorHelpers/appError";
 
 const createUser = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const user = await UserServices.createUserService(req.body);
+    const payload = req.body;
+    const loggedInUserId = req.user.userId;
+    payload.createdBy = loggedInUserId;
+
+    const user = await UserServices.createUserService(payload);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -166,7 +170,7 @@ export const UserControllers = {
   getMe,
   getAllUsers,
   getAllTrashUsers,
- 
+
   getSingleUser,
   updateUser,
   deleteUser,
