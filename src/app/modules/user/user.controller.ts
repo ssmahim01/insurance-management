@@ -10,7 +10,6 @@ import { IUser } from "./user.interface";
 import { sendResponse } from "../../utils/sendResponse";
 import { catchAsync } from "../../utils/catchAsync";
 import { User } from "./user.model";
-import AppError from "../../errorHelpers/appError";
 
 const createUser = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {

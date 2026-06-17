@@ -150,8 +150,6 @@ const verifyOtp = async (
   };
 };
 
-
-
 const getNewAccessToken = async (
   refreshToken: string,
 ) => {
@@ -164,8 +162,6 @@ const getNewAccessToken = async (
     accessToken: newAccessToken,
   };
 };
-
-
 
 const changePassword = async (
   oldPassword: string,
@@ -206,8 +202,6 @@ const changePassword = async (
   return null;
 };
 
-
-
 const adminChangePassword = async (
   userId: string,
   newPassword: string,
@@ -232,7 +226,6 @@ const adminChangePassword = async (
 
   return null;
 };
-
 
 
 export const AuthServices = {
