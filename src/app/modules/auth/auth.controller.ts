@@ -9,9 +9,9 @@ import { setAuthCookie } from "../../utils/setCookie";
 import { JwtPayload } from "jsonwebtoken";
 
 const staffLogin = catchAsync(async (req: Request, res: Response) => {
-  const { phoneNumber, password } = req.body;
+  const { phone, password } = req.body;
 
-  const loginInfo = await AuthServices.staffLogin(phoneNumber, password);
+  const loginInfo = await AuthServices.staffLogin(phone, password);
 
   setAuthCookie(res, {
     accessToken: loginInfo.accessToken,

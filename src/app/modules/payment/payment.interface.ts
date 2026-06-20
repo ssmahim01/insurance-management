@@ -1,29 +1,28 @@
+
 import { Types } from "mongoose";
 
-export enum PaymentMethod {
-  COD = "COD",
-  STRIPE = "STRIPE",
-}
-
 export enum PaymentStatus {
-  UNPAID = "UNPAID",
-  PAID = "PAID",
-  FAILED = "FAILED",
+    UNPAID = "UNPAID",
+    COMPLETED = "COMPLETED",
+    FAILED = "FAILED",
+    CANCELLED = "CANCELLED",
+    REFUNDED = "REFUNDED"
 }
 
 export interface IPayment {
-  _id?: Types.ObjectId;
+    subscription: Types.ObjectId;
 
-  /** 🔥 Order reference */
-  order: Types.ObjectId;
+    transactionId: string;
 
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
+    amount: number;
 
-  transactionId?: string;
-  amount: number;
-  invoiceUrl?: string;
-  checkoutUrl?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+    invoiceUrl?: string;
+
+    paymentGatewayData?: any;
+
+    status: PaymentStatus;
+
+    createdAt?: Date;
+
+    updatedAt?: Date;
 }

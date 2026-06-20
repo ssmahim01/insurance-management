@@ -1,55 +1,47 @@
-import { Schema, model, Types } from "mongoose";
-import {
-  IPayment,
-  PaymentMethod,
-  PaymentStatus,
-} from "./payment.interface";
+
+import { model, Schema } from "mongoose";
+import { IPayment, PaymentStatus } from "./payment.interface";
 
 const paymentSchema = new Schema<IPayment>(
-  {
-    /** 🔗 Order reference */
-    order: {
-      type: Types.ObjectId,
-      ref: "Order",
-      required: true,
-      index: true
-    },
+    {
+        subscription: {
+            type: Schema.Types.ObjectId,
+            ref: "Subscription",
+            required: true,
+            unique: true,
+        },
 
-    paymentMethod: {
-      type: String,
-      enum: Object.values(PaymentMethod),
-      required: true,
-    },
+        transactionId: {
+            type: String,
+            required: true,
+            unique: true,
+        },
 
-    paymentStatus: {
-      type: String,
-      enum: Object.values(PaymentStatus),
-      required: true,
-      default: PaymentStatus.UNPAID,
-    },
+        amount: {
+            type: Number,
+            required: true,
+        },
 
-    transactionId: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
+        invoiceUrl: {
+            type: String,
+        },
 
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
+        paymentGatewayData: {
+            type: Schema.Types.Mixed,
+        },
+
+        status: {
+            type: String,
+            enum: Object.values(PaymentStatus),
+            default: PaymentStatus.UNPAID,
+        },
     },
-    invoiceUrl: {
-      type: String,
-    },
-    checkoutUrl: {  
-      type: String,
-      default: null
+    {
+        timestamps: true,
     }
-  },
-  {
-    timestamps: true,
-  }
 );
 
-export const Payment = model<IPayment>("Payment", paymentSchema);
+export const PaymentModel = model<IPayment>(
+    "Payment",
+    paymentSchema
+);

@@ -14,21 +14,37 @@ export enum IsActive {
   BLOCKED = "BLOCKED",
 }
 
+export interface IAddress {
+  division?: string;
+  district?: string;
+  thana?: string;
+  union?: string;
+}
+
 export interface IUser {
   _id?: Types.ObjectId;
 
   createdBy?: Types.ObjectId;
 
+  agentLeader?: Types.ObjectId;
+
   name: string;
 
+  address?: IAddress;
+
   phone: string;
-  phoneNumber?: string;
+
+  email?: string;
 
   password?: string;
 
   role: Role;
 
   picture?: string;
+
+  salary?: string;
+
+  salaryPerCustomer?: string;
 
   isActive?: IsActive;
 

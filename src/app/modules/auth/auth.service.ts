@@ -71,9 +71,9 @@ const staffLogin = async (
   };
 };
 
-const sendOtp = async (phoneNumber: string) => {
+const sendOtp = async (phone: string) => {
   const user = await User.findOne({
-    phone: phoneNumber,
+    phone: phone,
     role: Role.CUSTOMER,
   });
 
@@ -86,10 +86,10 @@ const sendOtp = async (phoneNumber: string) => {
 
   const otp = generateOTP();
 
-  await saveOTP(phoneNumber, otp);
+  await saveOTP(phone, otp);
 
   await sendSMS(
-    phoneNumber,
+    phone,
     `Your OTP is ${otp}`
   );
 

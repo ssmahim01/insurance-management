@@ -8,30 +8,86 @@ import { envVars } from "../../config/env";
 import { JwtPayload } from "jsonwebtoken";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants copy";
-import { Types } from "mongoose";
+
+// const createUserService = async (payload: Partial<IUser>) => {
+//   const isExistUser = await User.findOne({
+//     phone: payload.phone
+//   });
+
+//   if (isExistUser) {
+//     throw new AppError(httpStatus.BAD_REQUEST, "Phone number already exists");
+//   }
+//   let password = "";
+//   if (payload?.password) {
+
+//     password = await bcryptjs.hash(
+//       payload?.password as string,
+//       Number(envVars.BCRYPT_SALT_ROUND),
+//     );
+//   }
+
+//   const user = await User.create({
+//     ...payload,
+//     password
+//   });
+
+//   return user;
+// };
+
 
 const createUserService = async (payload: Partial<IUser>) => {
-  console.log("User payload ", payload)
   const isExistUser = await User.findOne({
-    phone: payload.phone
+    phone: payload.phone,
   });
 
   if (isExistUser) {
     throw new AppError(httpStatus.BAD_REQUEST, "Phone number already exists");
   }
 
-  const hashedPassword = await bcryptjs.hash(
-    payload.password as string,
-    Number(envVars.BCRYPT_SALT_ROUND),
-  );
+  // ✅ ROLE BASE VALIDATION
+  if (payload.role === Role.AGENT) {
+    if (!payload.agentLeader) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Agent must have an agentLeader assigned",
+      );
+    }
+
+    // optional: verify leader exists and is AGENT_LEADER
+    const leader = await User.findById(payload.agentLeader);
+
+    if (!leader) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        "Agent Leader not found",
+      );
+    }
+
+    if (leader.role !== Role.AGENT_LEADER) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Assigned user is not an Agent Leader",
+      );
+    }
+  }
+
+  let password = "";
+
+  if (payload?.password) {
+    password = await bcryptjs.hash(
+      payload.password as string,
+      Number(envVars.BCRYPT_SALT_ROUND),
+    );
+  }
 
   const user = await User.create({
     ...payload,
-    password: hashedPassword,
+    password,
   });
 
   return user;
 };
+
 
 const getMe = async (userId: string) => {
   const user = await User.findById(userId).select("-password");
