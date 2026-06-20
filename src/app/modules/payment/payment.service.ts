@@ -271,9 +271,7 @@ const updatePayment = async (id: string, payload: any) => {
 // startDate + endDate together -> range (inclusive)
 // only startDate               -> exact day match
 // only endDate                 -> exact day match
-// =============================================================
 
-// paymentDateFieldMap আর লাগবে না, সরিয়ে দিন
 
 const getPaymentDayBoundariesUTC = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -313,18 +311,18 @@ const buildPaymentDateFilter = (
 const buildPaymentQueryObj = (query: Record<string, string>) => {
     const queryObj: any = {};
 
-    const startDateStr = query["startDate"];  // dateType সরানো হয়েছে
-    const endDateStr   = query["endDate"];
+    const startDateStr = query["startDate"];
+    const endDateStr = query["endDate"];
 
-    Object.assign(queryObj, buildPaymentDateFilter(startDateStr, endDateStr));  // ২ param
+    Object.assign(queryObj, buildPaymentDateFilter(startDateStr, endDateStr));
 
     if (query.status) queryObj.status = query.status;
 
     delete query.startDate;
     delete query.endDate;
-    delete query.dateType;  // কেউ পাঠালেও ignore হবে
+    delete query.dateType;
 
-    return { queryObj, startDateStr, endDateStr };  // dateType সরানো
+    return { queryObj, startDateStr, endDateStr };
 };
 
 const getPaymentStats = async (match: Record<string, any>) => {
@@ -333,10 +331,10 @@ const getPaymentStats = async (match: Record<string, any>) => {
         {
             $group: {
                 _id: null,
-                total:     { $sum: 1 },
+                total: { $sum: 1 },
                 completed: { $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] } },
-                pending:   { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
-                failed:    { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
+                pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
+                failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },
                 totalRevenue: {
                     $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, "$amount", 0] },
@@ -352,7 +350,7 @@ const getPaymentStats = async (match: Record<string, any>) => {
 };
 
 const getAllPayments = async (query: Record<string, string>) => {
-    const { queryObj, startDateStr, endDateStr } =  // dateType সরানো
+    const { queryObj, startDateStr, endDateStr } =
         buildPaymentQueryObj(query);
 
     const baseQuery = PaymentModel.find(queryObj);
@@ -369,7 +367,7 @@ const getAllPayments = async (query: Record<string, string>) => {
 
     const meta = await queryBuilder.getMeta();
 
-    const statsMatch = buildPaymentDateFilter(startDateStr, endDateStr);  // ২ param
+    const statsMatch = buildPaymentDateFilter(startDateStr, endDateStr);
     const stats = await getPaymentStats(statsMatch);
 
     return { data, meta, stats };
@@ -386,6 +384,17 @@ const getSinglePayment = async (id: string) => {
     return { data: result };
 };
 
+const softDeletePayment = async (id: string) => {
+    await PaymentModel.findByIdAndUpdate(
+        id,
+        {
+            isDeleted: true,
+        }
+    );
+
+    return null;
+};
+
 const deletePayment = async (id: string) => {
     const result = await PaymentModel.findByIdAndDelete(id);
     return { data: result };
@@ -400,5 +409,6 @@ export const PaymentService = {
     updatePayment,
     getAllPayments,
     getSinglePayment,
+    softDeletePayment,
     deletePayment,
 };

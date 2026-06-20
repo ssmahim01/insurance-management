@@ -111,6 +111,17 @@ const updatePayment = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const softDeletePayment = catchAsync(async (req: Request, res: Response) => {
+    const result = await PaymentService.softDeletePayment(req.params.id as string);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Payment deleted successfully",
+        data: null
+    });
+});
+
 const deletePayment = catchAsync(async (req: Request, res: Response) => {
     const result = await PaymentService.deletePayment(req.params.id as string);
 
@@ -129,6 +140,7 @@ export const PaymentController = {
     cancelPayment,   
     getAllPayments,   
     getSinglePayment, 
-    updatePayment,     
+    updatePayment,  
+    softDeletePayment,   
     deletePayment,     
 };

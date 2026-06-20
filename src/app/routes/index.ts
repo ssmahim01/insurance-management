@@ -4,6 +4,8 @@ import { authRoutes } from "../modules/auth/auth.route";
 import { packageRoutes } from "../modules/package/insurancePackage.route";
 import { subscriptionRoutes } from "../modules/subscription/subscription.route";
 import { paymentRoutes } from "../modules/payment/payment.route";
+import { PartnerRoutes } from "../modules/partner/partner.route";
+import { branchRoutes } from "../modules/branch/branch.route";
 
 export const router = Router();
 
@@ -27,6 +29,14 @@ const moduleRoutes = [
   {
     path: "/payment",
     route: paymentRoutes
+  },
+   {
+    path: "/partner",
+    route: PartnerRoutes
+  },
+     {
+    path: "/branch",
+    route: branchRoutes
   }
 ];
 
