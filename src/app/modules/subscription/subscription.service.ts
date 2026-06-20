@@ -13,6 +13,7 @@ import { Role } from "../user/user.interface";
 import { InsurancePackage } from "../package/insurancePackage.model";
 import { PaymentModel } from "../payment/payment.model";
 import { PaymentService } from "../payment/payment.service";
+import { sendSMS } from "../../utils/sendSms";
 
 const createSubscription = async (
   payload: Partial<ISubscription> & {
@@ -30,6 +31,7 @@ const createSubscription = async (
     session.startTransaction();
 
     let customerId: Types.ObjectId;
+    let customer;
 
     // Customer Resolve
     if (payload.customer) {
@@ -43,6 +45,7 @@ const createSubscription = async (
       }
 
       customerId = existingCustomer._id;
+      customer = existingCustomer;
     }
 
     else if (payload.customerPayload) {
@@ -52,6 +55,7 @@ const createSubscription = async (
 
       if (existingCustomer) {
         customerId = existingCustomer._id;
+        customer = existingCustomer;
       } else {
         const createdCustomer =
           await UserServices.createUserService({
@@ -61,6 +65,7 @@ const createSubscription = async (
           });
 
         customerId = createdCustomer._id as Types.ObjectId;
+        customer = createdCustomer
       }
     }
 
@@ -186,7 +191,7 @@ const createSubscription = async (
       );
     }
 
-   const payment = await PaymentModel.create(
+    const payment = await PaymentModel.create(
       {
         subscription: subscription[0]._id,
         transactionId,
@@ -195,7 +200,6 @@ const createSubscription = async (
 
     );
 
-    console.log("Payment res ", payment)
 
 
     await session.commitTransaction();
@@ -203,6 +207,11 @@ const createSubscription = async (
 
 
     const paymentInitRes = await PaymentService.initPayment(subscription[0]._id);
+
+    await sendSMS(
+      customer.phone,
+      `Your payment url is ${paymentInitRes?.paymentUrl}`
+    );
 
     return {
       data: {

@@ -1,0 +1,105 @@
+import { Request, Response } from "express";
+import { catchAsync } from "../../utils/catchAsync";
+import { sendResponse } from "../../utils/sendResponse";
+import httpStatus from "http-status-codes";
+import { PartnerServices } from "./partner.service";
+
+const createPartner = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+
+  const result = await PartnerServices.createPartner(req.body, userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Partner created successfully",
+    data: result,
+  });
+});
+
+const getAllPartners = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.getAllPartners(
+    req.query as Record<string, string>
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partners retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+const getAllTrashPartners = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.getAllTrashPartners(
+    req.query as Record<string, string>
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Trash Partners retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+const getSinglePartner = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.getSinglePartner(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner retrieved successfully",
+    data: result,
+  });
+});
+
+const updatePartner = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.updatePartner(
+    req.params.id as string,
+    req.body
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner updated successfully",
+    data: result,
+  });
+});
+
+const softDeletePartner = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.softDeletePartner(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner moved trash successfully",
+    data: result,
+  });
+});
+
+const deletePartner = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.deletePartner(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner deleted successfully",
+    data: result,
+  });
+});
+
+export const PartnerController = {
+  createPartner,
+  getAllPartners,
+  getAllTrashPartners,
+  getSinglePartner,
+  updatePartner,
+  softDeletePartner,
+  deletePartner,
+};
