@@ -1,10 +1,13 @@
 import { Types } from "mongoose";
+import { PlanType } from "../package/insurancepackage.interface";
+import { IUser } from "../user/user.interface";
 
 export enum SubscriptionStatus {
+  PENDING = "PENDING",
   ACTIVE = "ACTIVE",
   EXPIRED = "EXPIRED",
-  PENDING = "PENDING",
   CANCELLED = "CANCELLED",
+  FAILED = "FAILED",
 }
 
 export enum PaymentStatus {
@@ -14,45 +17,37 @@ export enum PaymentStatus {
   REFUNDED = "REFUNDED",
 }
 
-export enum PlanType {
-  MONTHLY = "MONTHLY",
-  QUARTERLY = "QUARTERLY",
-  HALF_YEARLY = "HALF_YEARLY",
-  YEARLY = "YEARLY",
-  LIFETIME = "LIFETIME"
-}
-
 export interface ISubscription {
   _id?: Types.ObjectId;
 
-  customer: Types.ObjectId;          
-  package: Types.ObjectId;         
+  customer?: Types.ObjectId;
+  customerPayload?: IUser;
+  package: Types.ObjectId;
 
-  planType: PlanType;              
-  durationInMonths: number;        
+  planType: PlanType;
 
-  startDate: Date;
-  endDate: Date;
+  durationInMonths?: number;
 
-  status: SubscriptionStatus;
+  price: number;
 
   paymentStatus: PaymentStatus;
 
-  price: number;                 
-  discountAmount?: number;
-  payableAmount: number;
-
   transactionId?: string;
-  paymentMethod?: string;
 
-  autoRenew: boolean;
+  status: SubscriptionStatus;
 
-  policyNumber?: string;
+  startDate: Date;
 
-  assignedAgent?: Types.ObjectId;
-  assignedAgentLeader?: Types.ObjectId;
+  endDate?: Date | null; // null for lifetime plan
 
-  createdBy?: Types.ObjectId;       // Agent/Admin who created
+  isLifetime?: boolean;
+
+  createdBy?: Types.ObjectId;
+
+  autoRenew?: boolean;
+
+  isDeleted: boolean;
+  isActive: boolean;
 
   createdAt?: Date;
   updatedAt?: Date;

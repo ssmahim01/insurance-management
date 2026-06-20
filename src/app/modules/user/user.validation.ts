@@ -18,15 +18,20 @@ export const createUserZodSchema = z.object({
 
   password: z
     .string({ invalid_type_error: "Password must be string" })
-    .min(8, { message: "Password must be at least 8 characters long." }),
-
+    .min(8, { message: "Password must be at least 8 characters long." })
+    .optional(),
   role: z
     .enum([Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.AGENT, Role.CUSTOMER, Role.ADMIN])
     .optional(),
 
   picture: z
     .string({ invalid_type_error: "Picture must be string" })
-    .optional()
+    .optional(),
+
+  agentLeader: z
+    .string()
+    .min(1, "agentLeader cannot be empty")
+    .optional(),
 });
 
 export const updateUserZodSchema = z.object({
@@ -67,5 +72,9 @@ export const updateUserZodSchema = z.object({
 
   isVerified: z
     .boolean({ invalid_type_error: "isVerified must be true or false" })
+    .optional(),
+  agentLeader: z
+    .string()
+    .min(1, "agentLeader cannot be empty")
     .optional(),
 });
