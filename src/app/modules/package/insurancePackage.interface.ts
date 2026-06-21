@@ -15,6 +15,14 @@ export interface IPlan {
     discountPrice: number;
 }
 
+export interface IPackagePartnerDiscount {
+    partner: Types.ObjectId;
+
+    discountPercent: number;
+
+    isActive: boolean;
+}
+
 export interface IInsurancePackage {
     _id?: Types.ObjectId;
 
@@ -29,6 +37,8 @@ export interface IInsurancePackage {
 
     benefits: string[];
     exclusions: string[];
+
+    partnerDiscounts?: IPackagePartnerDiscount[];
 
     isActive: boolean;
     isDeleted: boolean;

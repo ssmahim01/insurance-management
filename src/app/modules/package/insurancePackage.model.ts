@@ -28,6 +28,29 @@ const planSchema = new Schema<IPlan>(
     }
 );
 
+const packagePartnerDiscountSchema = new Schema(
+    {
+        partner: {
+            type: Schema.Types.ObjectId,
+            ref: "Partner",
+            required: true,
+        },
+
+        discountPercent: {
+            type: Number,
+            required: true,
+            min: 0,
+            max: 100,
+        },
+
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
+    },
+    { _id: false }
+);
+
 const insurancePackageSchema = new Schema<IInsurancePackage>(
     {
         name: {
@@ -58,6 +81,11 @@ const insurancePackageSchema = new Schema<IInsurancePackage>(
         plans: {
             type: [planSchema],
             required: true,
+        },
+
+        partnerDiscounts: {
+            type: [packagePartnerDiscountSchema],
+            default: [],
         },
 
         benefits: {
