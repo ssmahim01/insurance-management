@@ -11,6 +11,7 @@ import { multerUpload } from "../../config/multer.config";
 
 const router = express.Router();
 
+// ─── CREATE ────────────────────────────────────────────────────────────────
 router.post(
   "/create-user",
   checkAuth(Role.SUPER_ADMIN, Role.AGENT, Role.AGENT_LEADER),
@@ -19,6 +20,7 @@ router.post(
   UserControllers.createUser,
 );
 
+// ─── PROFILE ───────────────────────────────────────────────────────────────
 router.get(
   "/me",
   checkAuth(...Object.values(Role)),
@@ -33,12 +35,10 @@ router.patch(
   UserControllers.updateProfile,
 );
 
+// ─── ALL STAFF (non-customer) ──────────────────────────────────────────────
 router.get(
   "/all-users",
-  checkAuth(
-    Role.SUPER_ADMIN,
-    Role.AGENT_LEADER,
-  ),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
   UserControllers.getAllUsers,
 );
 
@@ -48,6 +48,71 @@ router.get(
   UserControllers.getAllTrashUsers,
 );
 
+// ─── SUPER ADMIN / ADMIN — role-specific lists ─────────────────────────────
+router.get(
+  "/all-agent-leaders",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllAgentLeaders,
+);
+
+router.get(
+  "/all-agents",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllAgents,
+);
+
+router.get(
+  "/all-customers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllCustomers,
+);
+
+// ─── AGENT LEADER — own resources ─────────────────────────────────────────
+router.get(
+  "/my-agents",                          // own agents
+  checkAuth(Role.AGENT_LEADER),
+  UserControllers.getMyAgents,
+);
+
+router.get(
+  "/my-leader-customers",                // customers created by own agents
+  checkAuth(Role.AGENT_LEADER),
+  UserControllers.getMyAgentLeaderCustomers,
+);
+
+router.get(
+  "/leader-agent-customers/:agentId",   // customers of a specific agent under this leader
+  checkAuth(Role.AGENT_LEADER),
+  UserControllers.getAgentCustomersByLeader,
+);
+
+// ─── AGENT — own resources ─────────────────────────────────────────────────
+router.get(
+  "/my-customers",                       // own customers
+  checkAuth(Role.AGENT),
+  UserControllers.getMyCustomers,
+);
+
+router.get(
+  "/my-agent-customers",                 // same as my-customers but via getCustomersByAgent service
+  checkAuth(Role.AGENT),
+  UserControllers.getMyAgentCustomers,
+);
+
+// ─── ADMIN / SUPER ADMIN — agent-leader scoped ─────────────────────────────
+router.get(
+  "/agent-leader-customers/:agentLeaderId",  // all customers under a specific leader
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAgentLeaderCustomersByAdmin,
+);
+
+router.get(
+  "/agent-customers/:agentId",               // all customers of a specific agent
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAgentCustomersByAdmin,
+);
+
+// ─── SINGLE / UPDATE / DELETE ──────────────────────────────────────────────
 router.get(
   "/:id",
   checkAuth(...Object.values(Role)),
