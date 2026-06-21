@@ -25,9 +25,15 @@ const staffLogin = async (
   phone: string,
   password: string,
 ) => {
+
+console.log("phone", phone)
+console.log("Password", password)
+
   const user = await User.findOne({ phone }).select(
     "+password",
   );
+
+  console.log("User in auth ", user)
 
   if (!user) {
     throw new AppError(
