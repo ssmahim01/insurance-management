@@ -8,43 +8,94 @@ import { envVars } from "../../config/env";
 import { JwtPayload } from "jsonwebtoken";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants copy";
+import { Types } from "mongoose";
 
-// const createUserService = async (payload: Partial<IUser>) => {
-//   const isExistUser = await User.findOne({
-//     phone: payload.phone
-//   });
+// =============================================================
+// DATE FILTER HELPERS
+// startDate only  → exact match on that calendar day (createdAt)
+// endDate only    → exact match on that calendar day (createdAt)
+// both provided   → inclusive date range
+// =============================================================
 
-//   if (isExistUser) {
-//     throw new AppError(httpStatus.BAD_REQUEST, "Phone number already exists");
-//   }
-//   let password = "";
-//   if (payload?.password) {
+const getDayBoundariesUTC = (dateStr: string) => {
+  const d = new Date(dateStr);
+  const start = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0),
+  );
+  const end = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999),
+  );
+  return { start, end };
+};
 
-//     password = await bcryptjs.hash(
-//       payload?.password as string,
-//       Number(envVars.BCRYPT_SALT_ROUND),
-//     );
-//   }
+const buildDateFilter = (
+  startDateStr: string | undefined,
+  endDateStr: string | undefined,
+): Record<string, { $gte?: Date; $lte?: Date }> => {
+  if (!startDateStr && !endDateStr) return {};
 
-//   const user = await User.create({
-//     ...payload,
-//     password
-//   });
+  if (startDateStr && endDateStr) {
+    return {
+      createdAt: {
+        $gte: getDayBoundariesUTC(startDateStr).start,
+        $lte: getDayBoundariesUTC(endDateStr).end,
+      },
+    };
+  }
 
-//   return user;
-// };
+  if (startDateStr) {
+    const { start, end } = getDayBoundariesUTC(startDateStr);
+    return { createdAt: { $gte: start, $lte: end } };
+  }
 
+  const { start, end } = getDayBoundariesUTC(endDateStr!);
+  return { createdAt: { $gte: start, $lte: end } };
+};
+
+const buildQueryObj = (query: Record<string, string>) => {
+  const startDateStr = query["startDate"];
+  const endDateStr   = query["endDate"];
+  const dateFilter   = buildDateFilter(startDateStr, endDateStr);
+
+  delete query.startDate;
+  delete query.endDate;
+
+  return { dateFilter, startDateStr, endDateStr };
+};
+
+// =============================================================
+// STATS HELPER
+// =============================================================
+
+const getUserStats = async (match: Record<string, any>) => {
+  const agg = await User.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        total:    { $sum: 1 },
+        active:   { $sum: { $cond: [{ $eq: ["$isActive", IsActive.ACTIVE] }, 1, 0] } },
+        inactive: { $sum: { $cond: [{ $eq: ["$isActive", IsActive.INACTIVE] }, 1, 0] } },
+        blocked:  { $sum: { $cond: [{ $eq: ["$isActive", IsActive.BLOCKED] }, 1, 0] } },
+      },
+    },
+    { $project: { _id: 0, total: 1, active: 1, inactive: 1, blocked: 1 } },
+  ]);
+
+  return agg[0] || { total: 0, active: 0, inactive: 0, blocked: 0 };
+};
+
+// =============================================================
+// EXISTING SERVICES
+// =============================================================
 
 const createUserService = async (payload: Partial<IUser>) => {
-  const isExistUser = await User.findOne({
-    phone: payload.phone,
-  });
+  const isExistUser = await User.findOne({ phone: payload.phone });
 
   if (isExistUser) {
     throw new AppError(httpStatus.BAD_REQUEST, "Phone number already exists");
   }
 
-  // ✅ ROLE BASE VALIDATION
   if (payload.role === Role.AGENT) {
     if (!payload.agentLeader) {
       throw new AppError(
@@ -53,14 +104,10 @@ const createUserService = async (payload: Partial<IUser>) => {
       );
     }
 
-    // optional: verify leader exists and is AGENT_LEADER
     const leader = await User.findById(payload.agentLeader);
 
     if (!leader) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        "Agent Leader not found",
-      );
+      throw new AppError(httpStatus.NOT_FOUND, "Agent Leader not found");
     }
 
     if (leader.role !== Role.AGENT_LEADER) {
@@ -72,7 +119,6 @@ const createUserService = async (payload: Partial<IUser>) => {
   }
 
   let password = "";
-
   if (payload?.password) {
     password = await bcryptjs.hash(
       payload.password as string,
@@ -80,132 +126,145 @@ const createUserService = async (payload: Partial<IUser>) => {
     );
   }
 
-  const user = await User.create({
-    ...payload,
-    password,
-  });
-
-  return user;
+  return await User.create({ ...payload, password });
 };
-
 
 const getMe = async (userId: string) => {
   const user = await User.findById(userId).select("-password");
-  return {
-    data: user,
-  };
+  return { data: user };
 };
 
 const getSingleUser = async (id: string) => {
   const user = await User.findById(id).select("-password");
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
-  }
-  return {
-    data: user,
-  };
+  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
+  return { data: user };
 };
 
 const deleteUser = async (id: string) => {
   const user = await User.findById(id);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
-  }
+  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
 
-  await User.findByIdAndUpdate(id, {
-    isDeleted: true,
-  });
-
-  return {
-    data: null,
-  };
+  await User.findByIdAndUpdate(id, { isDeleted: true });
+  return { data: null };
 };
 
 const getAllUsers = async (query: Record<string, string>) => {
-  const queryObj: any = {};
-
-  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    queryObj.createdAt = {};
-
-    if (query["createdAt[gte]"]) {
-      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
-    }
-
-    if (query["createdAt[lte]"]) {
-      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
-    }
-  }
-
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
 
   const queryBuilder = new QueryBuilder(
     User.find({
       role: { $ne: Role.CUSTOMER },
       isDeleted: false,
+      ...dateFilter,
     }),
     query,
   );
 
-  const usersData = queryBuilder
-    .filter()
-    .search(userSearchableFields)
-    .sort()
-    .fields()
-    .paginate();
-
   const [data, meta] = await Promise.all([
-    usersData.build(),
+    queryBuilder.filter().search(userSearchableFields).sort().fields().paginate().build(),
     queryBuilder.getMeta(),
   ]);
 
-  return {
-    data,
-    meta: {
-      ...meta,
-    },
+  // =========================
+  // DETAILED ROLE-WISE STATS
+  // =========================
+  const statsMatch = {
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
   };
+
+  const agg = await User.aggregate([
+    { $match: statsMatch },
+    {
+      $group: {
+        _id: "$role",
+        total:    { $sum: 1 },
+        active:   { $sum: { $cond: [{ $eq: ["$isActive", IsActive.ACTIVE] }, 1, 0] } },
+        inactive: { $sum: { $cond: [{ $eq: ["$isActive", IsActive.INACTIVE] }, 1, 0] } },
+        blocked:  { $sum: { $cond: [{ $eq: ["$isActive", IsActive.BLOCKED] }, 1, 0] } },
+      },
+    },
+  ]);
+
+  // build role → stats lookup map
+  const roleMap = agg.reduce<Record<string, any>>((map, item) => {
+    map[item._id] = {
+      total:    item.total,
+      active:   item.active,
+      inactive: item.inactive,
+      blocked:  item.blocked,
+    };
+    return map;
+  }, {});
+
+  const empty = { total: 0, active: 0, inactive: 0, blocked: 0 };
+
+  const stats = {
+    total: agg.reduce((sum, item) => sum + item.total, 0),
+    superAdmin:  roleMap[Role.SUPER_ADMIN]  || { ...empty },
+    admin:       roleMap[Role.ADMIN]        || { ...empty },
+    agentLeader: roleMap[Role.AGENT_LEADER] || { ...empty },
+    agent:       roleMap[Role.AGENT]        || { ...empty },
+    customer:    roleMap[Role.CUSTOMER]     || { ...empty },
+  };
+
+  return { data, meta, stats };
 };
+
 const getAllTrashUsers = async (query: Record<string, string>) => {
-  const queryObj: any = {};
-
-  // DATE FILTER
-  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    queryObj.createdAt = {};
-
-    if (query["createdAt[gte]"]) {
-      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
-    }
-
-    if (query["createdAt[lte]"]) {
-      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
-    }
-  }
-
-  // REMOVE SPECIAL FIELDS
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
 
   const queryBuilder = new QueryBuilder(
-    User.find({ role: { $ne: "CUSTOMER" }, isDeleted: true, ...queryObj }),
+    User.find({ role: { $ne: Role.CUSTOMER }, isDeleted: true, ...dateFilter }),
     query,
   );
-  const usersData = queryBuilder
-    .filter()
-    .search(userSearchableFields)
-    .sort()
-    .fields()
-    .paginate();
 
   const [data, meta] = await Promise.all([
-    usersData.build(),
+    queryBuilder.filter().search(userSearchableFields).sort().fields().paginate().build(),
     queryBuilder.getMeta(),
   ]);
 
-  return {
-    data,
-    meta,
+  const stats = await getUserStats({
+    role: { $ne: Role.CUSTOMER },
+    isDeleted: true,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Admin / Super Admin — retrieve all agents
+const getAllAgents = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.AGENT,
+    isDeleted: false,
+    ...dateFilter,
   };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("agentLeader", "name phone")
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.AGENT,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
 };
 
 const updateUser = async (
@@ -214,22 +273,14 @@ const updateUser = async (
   decodedToken: JwtPayload,
 ) => {
   const existingUser = await User.findById(userId);
-
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
+  if (!existingUser) throw new AppError(httpStatus.NOT_FOUND, "User not found");
 
   const isSuperAdmin = decodedToken.role === Role.SUPER_ADMIN;
 
-  // Non Super Admin can only update themselves
   if (!isSuperAdmin && userId !== decodedToken.userId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      "You are not authorized to update this user",
-    );
+    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this user");
   }
 
-  // Restrict sensitive fields for non super admins
   if (!isSuperAdmin) {
     delete payload.role;
     delete payload.isActive;
@@ -239,49 +290,20 @@ const updateUser = async (
     delete payload.createdBy;
   }
 
-  // Prevent Super Admin from changing own role
-  if (
-    isSuperAdmin &&
-    userId === decodedToken.userId &&
-    payload.role &&
-    payload.role !== Role.SUPER_ADMIN
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You cannot change your own role",
-    );
+  if (isSuperAdmin && userId === decodedToken.userId && payload.role && payload.role !== Role.SUPER_ADMIN) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You cannot change your own role");
   }
 
-  // Prevent Super Admin from deleting himself
-  if (
-    isSuperAdmin &&
-    userId === decodedToken.userId &&
-    payload.isDeleted === true
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You cannot delete your own account",
-    );
+  if (isSuperAdmin && userId === decodedToken.userId && payload.isDeleted === true) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You cannot delete your own account");
   }
 
-  // Prevent Super Admin from blocking himself
-  if (
-    isSuperAdmin &&
-    userId === decodedToken.userId &&
-    payload.isActive === IsActive.BLOCKED
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You cannot block your own account",
-    );
+  if (isSuperAdmin && userId === decodedToken.userId && payload.isActive === IsActive.BLOCKED) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You cannot block your own account");
   }
 
-  // Password should only be changed via change-password route
   if (payload.password) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Password must be changed using change password endpoint",
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, "Password must be changed using change password endpoint");
   }
 
   const updatedUser = await User.findByIdAndUpdate(userId, payload, {
@@ -289,38 +311,298 @@ const updateUser = async (
     runValidators: true,
   }).select("-password");
 
-  return {
-    data: updatedUser,
-  };
+  return { data: updatedUser };
 };
 
-const updateProfile = async (
-  payload: Partial<IUser>,
-  decodedToken: JwtPayload,
-) => {
+const updateProfile = async (payload: Partial<IUser>, decodedToken: JwtPayload) => {
   const user = await User.findById(decodedToken.userId);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
+  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
 
   if (payload.password) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      "You can't change your password here",
-    );
+    throw new AppError(httpStatus.FORBIDDEN, "You can't change your password here");
   }
 
-  const updatedUser = await User.findByIdAndUpdate(
-    decodedToken.userId,
-    payload,
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
-  return {
-    data: updatedUser,
+  const updatedUser = await User.findByIdAndUpdate(decodedToken.userId, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  return { data: updatedUser };
+};
+
+// Admin / Super Admin — retrieve all customers
+const getAllCustomers = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = { role: Role.CUSTOMER, isDeleted: false, ...dateFilter };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Agent — retrieve own created customers
+const getMyCustomers = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    createdBy: new Types.ObjectId(userId),
+    ...dateFilter,
   };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build(),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    createdBy: new Types.ObjectId(userId),
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Agent Leader — retrieve own agents
+const getMyAgents = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.AGENT,
+    isDeleted: false,
+    agentLeader: new Types.ObjectId(userId),
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("agentLeader", "name phone"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.AGENT,
+    isDeleted: false,
+    agentLeader: new Types.ObjectId(userId),
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Admin / Super Admin — retrieve all agent leaders
+const getAllAgentLeaders = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.AGENT_LEADER,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.AGENT_LEADER,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Single service — accepts agentLeaderId as param.
+// Agent Leader (self): controller passes id from decoded token.
+// Admin / Super Admin: controller passes id from route params.
+const getAllAgentLeaderCustomers = async ({
+  query,
+  agentLeaderId,
+}: {
+  query: Record<string, string>;
+  agentLeaderId: string;
+}) => {
+  // Verify agent leader exists
+  const leader = await User.findOne({
+    _id: agentLeaderId,
+    role: Role.AGENT_LEADER,
+    isDeleted: false,
+  });
+
+  if (!leader) {
+    throw new AppError(httpStatus.NOT_FOUND, "Agent Leader not found");
+  }
+
+  // Fetch all agent IDs belonging to this leader
+  const agents = await User.find({
+    agentLeader: new Types.ObjectId(agentLeaderId),
+    role: Role.AGENT,
+    isDeleted: false,
+  }).select("_id");
+
+  const agentIds = agents.map((a) => a._id);
+
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    createdBy: { $in: agentIds },
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    createdBy: { $in: agentIds },
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Single service for agent-wise customer lookup — called in 3 ways:
+//   - Agent           → agentId from decoded token (own customers)
+//   - Admin/SuperAdmin → agentId from route params (any agent)
+//   - Agent Leader    → agentId from route params + ownership validation
+const getCustomersByAgent = async ({
+  query,
+  agentId,
+  requesterId,   // userId from decoded token
+  requesterRole, // role from decoded token
+}: {
+  query: Record<string, string>;
+  agentId: string;
+  requesterId: string;
+  requesterRole: Role;
+}) => {
+  // Verify the agent exists
+  const agent = await User.findOne({
+    _id: agentId,
+    role: Role.AGENT,
+    isDeleted: false,
+  });
+
+  if (!agent) {
+    throw new AppError(httpStatus.NOT_FOUND, "Agent not found");
+  }
+
+  // Agent Leader restriction — can only view customers of their own agents
+  if (requesterRole === Role.AGENT_LEADER) {
+    if (!agent.agentLeader || agent.agentLeader.toString() !== requesterId) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        "You can only view customers of agents under your leadership",
+      );
+    }
+  }
+
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    createdBy: new Types.ObjectId(agentId),
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    createdBy: new Types.ObjectId(agentId),
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats, agent: { _id: agent._id, name: agent.name, phone: agent.phone } };
 };
 
 export const UserServices = {
@@ -332,4 +614,11 @@ export const UserServices = {
   getAllUsers,
   getAllTrashUsers,
   deleteUser,
+  getAllCustomers,
+  getMyCustomers,
+  getMyAgents,
+  getAllAgents,
+  getAllAgentLeaders,
+  getAllAgentLeaderCustomers,
+  getCustomersByAgent,
 };

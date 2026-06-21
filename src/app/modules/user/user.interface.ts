@@ -26,7 +26,7 @@ export interface IUser {
 
   createdBy?: Types.ObjectId;
 
-  agentLeader?: Types.ObjectId;
+  agentLeader?: Types.ObjectId; // only for agents
 
   name: string;
 

@@ -80,7 +80,6 @@ const updateUser = catchAsync(
   },
 );
 
-
 const deleteUser = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.params.id as string;
@@ -94,6 +93,7 @@ const deleteUser = catchAsync(
     });
   },
 );
+
 const getAllUsers = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
@@ -103,10 +103,11 @@ const getAllUsers = catchAsync(
 
     sendResponse(res, {
       success: true,
-      statusCode: httpStatus.CREATED,
+      statusCode: httpStatus.OK,
       message: "All Users Retrieved Successfully",
       data: result.data,
       meta: result.meta,
+      stats: result.stats,
     });
   },
 );
@@ -120,13 +121,30 @@ const getAllTrashUsers = catchAsync(
 
     sendResponse(res, {
       success: true,
-      statusCode: httpStatus.CREATED,
+      statusCode: httpStatus.OK,
       message: "All Trash Users Retrieved Successfully",
       data: result.data,
       meta: result.meta,
+      stats: result.stats,
     });
   },
 );
+
+// Admin / Super Admin — retrieve all agents
+const getAllAgents = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllAgents(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Agents Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
 
 const updateProfile = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -149,7 +167,6 @@ const updateProfile = catchAsync(
   },
 );
 
-// update customer trash
 const updateUserTrash = catchAsync(async (req: Request, res: Response) => {
   const id = req.params.id as string;
 
@@ -164,15 +181,207 @@ const updateUserTrash = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// =============================================================
+// NEW CONTROLLERS
+// =============================================================
+
+// Admin / Super Admin — retrieve all customers
+const getAllCustomers = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllCustomers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Customers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Agent — own customers (agentId from decoded token)
+const getMyCustomers = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as JwtPayload).userId;
+
+  const result = await UserServices.getMyCustomers({
+    query: req.query as Record<string, string>,
+    userId,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "My Customers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Agent Leader — retrieve own agents (id from decoded token)
+const getMyAgents = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as JwtPayload).userId;
+
+  const result = await UserServices.getMyAgents({
+    query: req.query as Record<string, string>,
+    userId,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "My Agents Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Admin / Super Admin — retrieve all agent leaders
+const getAllAgentLeaders = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllAgentLeaders(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Agent Leaders Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Agent Leader — retrieve customers of own agents (id from decoded token)
+const getMyAgentLeaderCustomers = catchAsync(
+  async (req: Request, res: Response) => {
+    const agentLeaderId = (req.user as JwtPayload).userId;
+
+    const result = await UserServices.getAllAgentLeaderCustomers({
+      query: req.query as Record<string, string>,
+      agentLeaderId,
+    });
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Agent Leader Customers Retrieved Successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
+    });
+  },
+);
+
+// Admin / Super Admin — customers of a specific agent leader (id from route params)
+const getAgentLeaderCustomersByAdmin = catchAsync(
+  async (req: Request, res: Response) => {
+    const agentLeaderId = req.params.agentLeaderId as string;
+
+    const result = await UserServices.getAllAgentLeaderCustomers({
+      query: req.query as Record<string, string>,
+      agentLeaderId,
+    });
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Agent Leader Customers Retrieved Successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
+    });
+  },
+);
+
+// Agent — own customers (agentId from decoded token)
+const getMyAgentCustomers = catchAsync(async (req: Request, res: Response) => {
+  const decoded = req.user as JwtPayload;
+
+  const result = await UserServices.getCustomersByAgent({
+    query: req.query as Record<string, string>,
+    agentId: decoded.userId,
+    requesterId: decoded.userId,
+    requesterRole: decoded.role,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Agent Customers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Admin / Super Admin — any agent's customers (agentId from route params)
+const getAgentCustomersByAdmin = catchAsync(async (req: Request, res: Response) => {
+  const decoded = req.user as JwtPayload;
+  const agentId = req.params.agentId as string;
+
+  const result = await UserServices.getCustomersByAgent({
+    query: req.query as Record<string, string>,
+    agentId ,
+    requesterId: decoded.userId,
+    requesterRole: decoded.role,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Agent Customers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Agent Leader — customers of an agent under their leadership (agentId from params, ownership validated)
+const getAgentCustomersByLeader = catchAsync(async (req: Request, res: Response) => {
+  const decoded = req.user as JwtPayload;
+  const agentId = req.params.agentId as string;
+
+  const result = await UserServices.getCustomersByAgent({
+    query: req.query as Record<string, string>,
+    agentId,
+    requesterId: decoded.userId,
+    requesterRole: decoded.role,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Agent Customers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats
+  });
+});
+
 export const UserControllers = {
   createUser,
   getMe,
   getAllUsers,
   getAllTrashUsers,
-
   getSingleUser,
   updateUser,
   deleteUser,
   updateProfile,
   updateUserTrash,
+  // new
+  getAllCustomers,
+  getMyCustomers,
+  getMyAgents,
+  getAllAgents,
+  getAllAgentLeaders,
+  getMyAgentLeaderCustomers,
+  getAgentLeaderCustomersByAdmin,
+  // agent-wise customer controllers
+  getMyAgentCustomers,
+  getAgentCustomersByAdmin,
+  getAgentCustomersByLeader,
 };
