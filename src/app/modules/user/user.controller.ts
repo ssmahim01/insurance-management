@@ -16,6 +16,10 @@ const createUser = catchAsync(
     const payload = req.body;
     const loggedInUserId = req.user.userId;
     payload.createdBy = loggedInUserId;
+    const file = req.file;
+    if (file) {
+      payload.picture = file.path;
+    }
 
     const user = await UserServices.createUserService(payload);
 
@@ -325,7 +329,7 @@ const getAgentCustomersByAdmin = catchAsync(async (req: Request, res: Response) 
 
   const result = await UserServices.getCustomersByAgent({
     query: req.query as Record<string, string>,
-    agentId ,
+    agentId,
     requesterId: decoded.userId,
     requesterRole: decoded.role,
   });

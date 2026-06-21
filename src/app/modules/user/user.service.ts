@@ -330,6 +330,7 @@ const updateProfile = async (payload: Partial<IUser>, decodedToken: JwtPayload) 
   return { data: updatedUser };
 };
 
+
 // Admin / Super Admin — retrieve all customers
 const getAllCustomers = async (query: Record<string, string>) => {
   const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
