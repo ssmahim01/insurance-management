@@ -137,8 +137,6 @@ const createSubscription = async (
       );
     }
 
-
-
     const transactionId = `TXN-${Date.now()}`;
 
     // Create Subscription
@@ -191,7 +189,7 @@ const createSubscription = async (
       );
     }
 
-    const payment = await PaymentModel.create(
+    await PaymentModel.create(
       {
         subscription: subscription[0]._id,
         transactionId,

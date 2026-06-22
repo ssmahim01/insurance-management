@@ -15,6 +15,19 @@ export const planValidationSchema = z.object({
     discountPrice: z.number().min(0, "Price must be 0 or greater").optional(),
 });
 
+export const packagePartnerDiscountSchema = z.object({
+    partner: z
+        .string()
+        .min(1, "Partner is required"),
+
+    discountPercent: z
+        .number()
+        .min(0, "Discount must be 0 or greater")
+        .max(100, "Discount cannot exceed 100"),
+
+    isActive: z.boolean().optional().default(true),
+});
+
 export const createInsurancePackageValidationSchema = z.object({
     name: z.string().min(2, "Name is required"),
 
@@ -35,6 +48,10 @@ export const createInsurancePackageValidationSchema = z.object({
     benefits: z.array(z.string()).optional().default([]),
 
     exclusions: z.array(z.string()).optional().default([]),
+    partnerDiscounts: z
+        .array(packagePartnerDiscountSchema)
+        .optional()
+        .default([]),
 
     isActive: z.boolean().optional().default(true),
 });
