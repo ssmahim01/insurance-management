@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import app from "./app";
 import { envVars } from "./app/config/env";
 import { seedAdmin } from "./app/utils/seedAdmin";
+import { registerSubscriptionExpireTracker } from "./app/utils/subscriptionExpireTracker";
 let server: Server;
 
 const startServer = async () => {
@@ -22,6 +23,9 @@ const startServer = async () => {
 };
 
 startServer();
+
+registerSubscriptionExpireTracker();
+
 
 process.on("unhandledRejection", (err) => {
   console.log("uncaught error detected.... server shutting down", err);

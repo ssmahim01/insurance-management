@@ -1,0 +1,101 @@
+import { Request, Response } from "express";
+import { catchAsync } from "../../utils/catchAsync";
+import { sendResponse } from "../../utils/sendResponse";
+import httpStatus from "http-status-codes";
+import { NotificationService } from "./notification.service";
+import { JwtPayload } from "jsonwebtoken";
+
+const createNotification = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.createNotification(req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Notification created successfully",
+    data: result,
+  });
+});
+
+// const getAllNotifications = catchAsync(async (req: Request, res: Response) => {
+
+//   const userId = req.user;
+
+//   const result = await NotificationService.getAllNotifications(
+//     {
+//     query: req.query as Record<string, string>,
+//     user,
+//   }
+//   );
+
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: "Notifications retrieved successfully",
+//     data: result.data,
+//     meta: result.meta,
+//   });
+// });
+
+const getAllNotifications = catchAsync(
+  async (req: Request, res: Response) => {
+    const result =
+      await NotificationService.getAllNotifications({
+        query: req.query as Record<string, string>,
+        user: {
+          userId: (req.user as any).userId,
+          role: (req.user as any).role,
+        },
+      });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message:
+        "Notifications retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats
+    });
+  },
+);
+
+const getSingleNotification = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.getSingleNotification(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Notification retrieved successfully",
+    data: result,
+  });
+});
+
+const markAsRead = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.markAsRead(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Notification marked as read",
+    data: result,
+  });
+});
+
+const softDeleteNotification = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.softDeleteNotification(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Notification deleted successfully",
+    data: result,
+  });
+});
+
+export const NotificationController = {
+  createNotification,
+  getAllNotifications,
+  getSingleNotification,
+  markAsRead,
+  softDeleteNotification,
+};
