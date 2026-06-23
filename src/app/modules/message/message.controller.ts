@@ -17,7 +17,7 @@ const createMessage = async (req: Request, res: Response) => {
 
 // GET ALL
 const getAllMessages = async (req: Request, res: Response) => {
-    const query = req.query;
+  const query = req.query;
   const result = await MessageService.getAllMessages(query as Record<string, string>);
 
   sendResponse(res, {
