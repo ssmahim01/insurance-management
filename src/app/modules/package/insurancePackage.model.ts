@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { IInsurancePackage, IPlan, PlanType } from "./insurancepackage.interface";
+import { IInsurancePackage, IPlan, PlanType } from "./insurance-package.interface";
 
 const planSchema = new Schema<IPlan>(
     {

@@ -5,8 +5,8 @@ import { InsurancePackage } from "./insurancePackage.model";
 import { Subscription } from "../subscription/subscription.model";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { packageSearchableFields } from "./insurancePackage.constants";
-import { IInsurancePackage } from "./insurancepackage.interface";
 import { Types } from "mongoose";
+import { IInsurancePackage } from "./insurance-package.interface";
 
 const getDayBoundariesUTC = (dateStr: string) => {
   const d = new Date(dateStr);

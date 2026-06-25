@@ -9,6 +9,7 @@ import { branchRoutes } from "../modules/branch/branch.route";
 import { messageRoutes } from "../modules/message/message.route";
 import { NotificationRoutes } from "../modules/notification/notification.route";
 import { ContactRoutes } from "../modules/contact/contact.route";
+import { ClaimRoutes } from "../modules/claim/claim.route";
 
 export const router = Router();
 
@@ -52,6 +53,10 @@ const moduleRoutes = [
   {
     path: "/contact",
     route: ContactRoutes
+  },
+  {
+    path: "/claim",
+    route: ClaimRoutes
   }
 ];
 

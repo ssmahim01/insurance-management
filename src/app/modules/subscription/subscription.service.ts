@@ -3,7 +3,6 @@ import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { Subscription } from "./subscription.model";
 import { ISubscription, PaymentStatus, SubscriptionStatus } from "./subscription.interface";
-import { PlanType } from "../package/insurancepackage.interface";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { subscriptionSearchableFields } from "./subscription.constants";
 import { User } from "../user/user.model";
@@ -14,6 +13,7 @@ import { InsurancePackage } from "../package/insurancePackage.model";
 import { PaymentModel } from "../payment/payment.model";
 import { PaymentService } from "../payment/payment.service";
 import { sendSMS } from "../../utils/sendSms";
+import { PlanType } from "../package/insurance-package.interface";
 
 const createSubscription = async (
   payload: Partial<ISubscription> & {
@@ -90,7 +90,7 @@ const createSubscription = async (
 
     // Plan Validation
     const selectedPlan = insurancePackage.plans.find(
-      (plan) => plan.type === payload.planType,
+      (plan: { type: PlanType }) => plan.type === payload.planType,
     );
 
     if (!selectedPlan) {
