@@ -185,10 +185,6 @@ const updateUserTrash = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// =============================================================
-// NEW CONTROLLERS
-// =============================================================
-
 // Admin / Super Admin — retrieve all customers
 const getAllCustomers = catchAsync(async (req: Request, res: Response) => {
   const result = await UserServices.getAllCustomers(

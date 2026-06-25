@@ -26,6 +26,8 @@ router.post(
     PaymentController.cancelPayment
 );
 
+router.post("/validate-payment", PaymentController.validatePayment)
+
 router.get("/all-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.getAllPayments);       // ✅
 router.get("/:id", checkAuth(Role.ADMIN, Role.CUSTOMER, Role.SUPER_ADMIN), PaymentController.getSinglePayment);              // ✅
 router.patch("/:id", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.updatePayment);          // ✅

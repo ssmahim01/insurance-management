@@ -16,26 +16,6 @@ const createNotification = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// const getAllNotifications = catchAsync(async (req: Request, res: Response) => {
-
-//   const userId = req.user;
-
-//   const result = await NotificationService.getAllNotifications(
-//     {
-//     query: req.query as Record<string, string>,
-//     user,
-//   }
-//   );
-
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Notifications retrieved successfully",
-//     data: result.data,
-//     meta: result.meta,
-//   });
-// });
-
 const getAllNotifications = catchAsync(
   async (req: Request, res: Response) => {
     const result =

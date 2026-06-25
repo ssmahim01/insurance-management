@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { PlanType } from "../package/insurancepackage.interface";
 import { IUser } from "../user/user.interface";
+import { PlanType } from "../package/insurance-package.interface";
 
 export enum SubscriptionStatus {
   PENDING = "PENDING",
