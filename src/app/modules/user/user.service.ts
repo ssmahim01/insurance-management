@@ -7,7 +7,7 @@ import bcryptjs from "bcryptjs";
 import { envVars } from "../../config/env";
 import { JwtPayload } from "jsonwebtoken";
 import { QueryBuilder } from "../../utils/QueryBuilder";
-import { userSearchableFields } from "./user.constants copy";
+import { userSearchableFields } from "./user.constants";
 import { Types } from "mongoose";
 
 // =============================================================
