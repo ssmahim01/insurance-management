@@ -2,13 +2,26 @@ import express from "express";
 import { PartnerController } from "./partner.controller";
 import { checkAuth } from "../../middlewares/checkAuth";
 import { Role } from "../user/user.interface";
+import { validateRequest } from "../../middlewares/validateRequest";
+import { createPartnerZodSchema, updatePartnerZodSchema } from "./partner.validation";
+import { multerUpload } from "../../config/multer.config";
 
 const router = express.Router();
 
 router.post(
-    "/create-partner",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
-    PartnerController.createPartner
+  "/create-partner",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  multerUpload.single("logo"),          
+  validateRequest(createPartnerZodSchema), 
+  PartnerController.createPartner    
+);
+
+router.patch(
+  "/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  multerUpload.single("logo"),
+  validateRequest(updatePartnerZodSchema),
+  PartnerController.updatePartner
 );
 
 router.get(
@@ -23,11 +36,6 @@ router.get(
     PartnerController.getSinglePartner
 );
 
-router.patch(
-    "/:id",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
-    PartnerController.updatePartner
-);
 
 router.patch(
     "/soft-delete/:id",
