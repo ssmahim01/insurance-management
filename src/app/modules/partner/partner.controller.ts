@@ -4,11 +4,35 @@ import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
 import { PartnerServices } from "./partner.service";
 
+// const createPartner = catchAsync(async (req: Request, res: Response) => {
+//   const userId = (req as any).user.userId;
+
+//   const result = await PartnerServices.createPartner(req.body.data, userId);
+
+//   sendResponse(res, {
+//     statusCode: httpStatus.CREATED,
+//     success: true,
+//     message: "Partner created successfully",
+//     data: result,
+//   });
+// });
+
+
 const createPartner = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user.userId;
+  const payload = req.body;           // ← directly req.body, parse করা লাগবে না
 
-  const result = await PartnerServices.createPartner(req.body, userId);
+  console.log("Partner create payload ", payload)
 
+
+  const file = req.file;
+  if (file) {
+    payload.logo = file.path;         // ← cloudinary/multer যেটাই use করো
+  }
+
+  console.log("Payload after file ", payload)
+
+  const result = await PartnerServices.createPartner(payload, userId);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -16,6 +40,23 @@ const createPartner = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
+const updatePartner = catchAsync(async (req: Request, res: Response) => {
+  const payload = req.body;
+  const file = req.file;
+  if (file) {
+    payload.logo = file.path;
+  }
+
+  const result = await PartnerServices.updatePartner(req.params.id as string, payload);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner updated successfully",
+    data: result,
+  });
+});
+
 
 const getAllPartners = catchAsync(async (req: Request, res: Response) => {
   const result = await PartnerServices.getAllPartners(
@@ -58,19 +99,19 @@ const getSinglePartner = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updatePartner = catchAsync(async (req: Request, res: Response) => {
-  const result = await PartnerServices.updatePartner(
-    req.params.id as string,
-    req.body
-  );
+// const updatePartner = catchAsync(async (req: Request, res: Response) => {
+//   const result = await PartnerServices.updatePartner(
+//     req.params.id as string,
+//     req.body
+//   );
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Partner updated successfully",
-    data: result,
-  });
-});
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: "Partner updated successfully",
+//     data: result,
+//   });
+// });
 
 const softDeletePartner = catchAsync(async (req: Request, res: Response) => {
   const result = await PartnerServices.softDeletePartner(req.params.id as string);

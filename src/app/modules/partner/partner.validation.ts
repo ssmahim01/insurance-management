@@ -13,3 +13,5 @@ export const createPartnerZodSchema = z.object({
 
   website: z.string().optional(),
 });
+
+export const updatePartnerZodSchema = createPartnerZodSchema.partial();
