@@ -138,7 +138,7 @@ export const createUserZodSchema = z.object({
   // CUSTOMER FIELDS (NEW)
   nid: z.string().optional(),
 
-  dateOfBirth: z.string().datetime().optional(),
+  dateOfBirth: z.string().date().optional(),
 
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
 
@@ -179,7 +179,7 @@ export const updateUserZodSchema = z.object({
   // CUSTOMER FIELDS (NEW)
   nid: z.string().optional(),
 
-  dateOfBirth: z.string().datetime().optional(),
+  dateOfBirth: z.string().date().optional(),
 
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
 

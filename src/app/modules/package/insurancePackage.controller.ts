@@ -5,7 +5,14 @@ import { sendResponse } from "../../utils/sendResponse";
 import { PackageServices } from "./insurancePackage.service";
 
 const createPackage = catchAsync(async (req: Request, res: Response) => {
-    const result = await PackageServices.createPackage(req.body);
+
+    const payload = req.body;
+    const file = req.file;
+    if (file) {
+        payload.featureImage = file.path;
+    }
+
+    const result = await PackageServices.createPackage(payload);
 
     sendResponse(res, {
         statusCode: httpStatus.CREATED,
@@ -55,10 +62,17 @@ const getSinglePackage = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updatePackage = catchAsync(async (req: Request, res: Response) => {
+
+       const payload = {
+          ...req.body,
+          featureImage: req.file?.path,
+        };
+
     const result = await PackageServices.updatePackage(
         req.params.id as string,
-        req.body,
+        payload,
     );
+
 
     sendResponse(res, {
         statusCode: httpStatus.OK,

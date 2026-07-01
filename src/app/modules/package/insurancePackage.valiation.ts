@@ -34,8 +34,9 @@ export const createInsurancePackageValidationSchema = z.object({
     slug: z
         .string()
         .optional(),
-
-    description: z.string().min(10, "Description is required"),
+    
+    featureImage: z.string().optional(),    
+    description: z.string().optional(),
 
     coverageAmount: z
         .number()

@@ -129,6 +129,63 @@ const createUserService = async (payload: Partial<IUser>) => {
   return await User.create({ ...payload, password });
 };
 
+const updateUser = async (
+  userId: string,
+  payload: Partial<IUser>,
+  decodedToken: JwtPayload,
+) => {
+  const existingUser = await User.findById(userId);
+  if (!existingUser) throw new AppError(httpStatus.NOT_FOUND, "User not found");
+
+  const isSuperAdmin = decodedToken.role === Role.SUPER_ADMIN;
+  const isAdmin = decodedToken.role === Role.ADMIN;
+
+  if (!isSuperAdmin && userId !== decodedToken.userId) {
+    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this user");
+  }
+
+  if (!isSuperAdmin) {
+    delete payload.role;
+    delete payload.isActive;
+    delete payload.isDeleted;
+    delete payload.isVerified;
+    delete payload.password;
+    delete payload.createdBy;
+  }
+
+  if (isSuperAdmin && userId === decodedToken.userId && payload.role && payload.role !== Role.SUPER_ADMIN) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You cannot change your own role");
+  }
+
+  if (isSuperAdmin && userId === decodedToken.userId && payload.isDeleted === true) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You cannot delete your own account");
+  }
+
+  if (isSuperAdmin && userId === decodedToken.userId && payload.isActive === IsActive.BLOCKED) {
+    throw new AppError(httpStatus.BAD_REQUEST, "You cannot block your own account");
+  }
+
+  if (payload.password && !isSuperAdmin) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Password must be changed using change password endpoint");
+  }
+
+  if(payload.password){
+    payload.password = await bcryptjs.hash(
+      payload.password as string,
+      Number(envVars.BCRYPT_SALT_ROUND),
+    );
+
+    
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(userId, payload, {
+    new: true,
+    runValidators: true,
+  }).select("-password");
+
+  return { data: updatedUser };
+};
+
 const getMe = async (userId: string) => {
   const user = await User.findById(userId).select("-password");
   return { data: user };
@@ -267,52 +324,7 @@ const getAllAgents = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
-const updateUser = async (
-  userId: string,
-  payload: Partial<IUser>,
-  decodedToken: JwtPayload,
-) => {
-  const existingUser = await User.findById(userId);
-  if (!existingUser) throw new AppError(httpStatus.NOT_FOUND, "User not found");
 
-  const isSuperAdmin = decodedToken.role === Role.SUPER_ADMIN;
-
-  if (!isSuperAdmin && userId !== decodedToken.userId) {
-    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this user");
-  }
-
-  if (!isSuperAdmin) {
-    delete payload.role;
-    delete payload.isActive;
-    delete payload.isDeleted;
-    delete payload.isVerified;
-    delete payload.password;
-    delete payload.createdBy;
-  }
-
-  if (isSuperAdmin && userId === decodedToken.userId && payload.role && payload.role !== Role.SUPER_ADMIN) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot change your own role");
-  }
-
-  if (isSuperAdmin && userId === decodedToken.userId && payload.isDeleted === true) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot delete your own account");
-  }
-
-  if (isSuperAdmin && userId === decodedToken.userId && payload.isActive === IsActive.BLOCKED) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot block your own account");
-  }
-
-  if (payload.password) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Password must be changed using change password endpoint");
-  }
-
-  const updatedUser = await User.findByIdAndUpdate(userId, payload, {
-    new: true,
-    runValidators: true,
-  }).select("-password");
-
-  return { data: updatedUser };
-};
 
 const updateProfile = async (payload: Partial<IUser>, decodedToken: JwtPayload) => {
   const user = await User.findById(decodedToken.userId);
