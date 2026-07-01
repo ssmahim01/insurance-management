@@ -86,7 +86,7 @@ router.get(
   UserControllers.getAgentCustomersByLeader,
 );
 
-// ─── AGENT — own resources ─────────────────────────────────────────────────
+// ─── AGENT — own resources ───
 router.get(
   "/my-customers",                       // own customers
   checkAuth(Role.AGENT),
@@ -99,7 +99,7 @@ router.get(
   UserControllers.getMyAgentCustomers,
 );
 
-// ─── ADMIN / SUPER ADMIN — agent-leader scoped ─────────────────────────────
+// ─── ADMIN / SUPER ADMIN — agent-leader scoped ────
 router.get(
   "/agent-leader-customers/:agentLeaderId",  // all customers under a specific leader
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
