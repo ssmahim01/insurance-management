@@ -65,7 +65,7 @@ const successPayment = async (query: Record<string, string>) => {
         const updatedPayment =
             await PaymentModel.findOneAndUpdate(
                 { transactionId },
-                { status: PaymentStatus.COMPLETED },
+                { status: PaymentStatus.PAID },
                 { returnDocument: "after", runValidators: true, session }
             );
 
