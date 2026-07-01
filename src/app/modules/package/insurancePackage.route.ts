@@ -4,6 +4,7 @@ import { Role } from "../user/user.interface";
 import { validateRequest } from "../../middlewares/validateRequest";
 import { createInsurancePackageValidationSchema, updateInsurancePackageValidationSchema } from "./insurancePackage.valiation";
 import { PackageControllers } from "./insurancePackage.controller";
+import { multerUpload } from "../../config/multer.config";
 
 
 const router = express.Router();
@@ -11,6 +12,7 @@ const router = express.Router();
 router.post(
   "/create-package",
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  multerUpload.single("featureImage"),
   validateRequest(createInsurancePackageValidationSchema),
   PackageControllers.createPackage,
 );
@@ -36,6 +38,7 @@ router.get(
 router.patch(
   "/:id",
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  multerUpload.single("featureImage"),
   validateRequest(updateInsurancePackageValidationSchema),
   PackageControllers.updatePackage,
 );

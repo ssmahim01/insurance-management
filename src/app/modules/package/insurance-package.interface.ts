@@ -29,7 +29,8 @@ export interface IInsurancePackage {
     name: string;
     slug: string;
 
-    description: string;
+    featureImage?: string;
+    description?: string;
 
     coverageAmount: number;
 

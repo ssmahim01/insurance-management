@@ -68,7 +68,11 @@ const insurancePackageSchema = new Schema<IInsurancePackage>(
 
         description: {
             type: String,
-            required: true,
+            trim: true,
+        },
+
+        featureImage: {
+            type: String,
             trim: true,
         },
 
