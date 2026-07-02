@@ -46,6 +46,24 @@ const getMe = catchAsync(
   },
 );
 
+const getMyTrashAgents = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as JwtPayload).userId;
+
+  const result = await UserServices.getMyTrashAgents({
+    query: req.query as Record<string, string>,
+    userId,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "My Trash Agents Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
 const getSingleUser = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.params.id as string;
@@ -97,6 +115,32 @@ const deleteUser = catchAsync(
     });
   },
 );
+
+const restoreUser = catchAsync(async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  const result = await UserServices.restoreUser(id as string);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "User Restored Successfully",
+    data: result.data,
+  });
+});
+
+const permanentDeleteUser = catchAsync(async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  const result = await UserServices.permanentDeleteUser(id as string);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "User Permanently Deleted Successfully",
+    data: result.data,
+  });
+});
 
 const getAllUsers = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -319,48 +363,52 @@ const getMyAgentCustomers = catchAsync(async (req: Request, res: Response) => {
 });
 
 // Admin / Super Admin — any agent's customers (agentId from route params)
-const getAgentCustomersByAdmin = catchAsync(async (req: Request, res: Response) => {
-  const decoded = req.user as JwtPayload;
-  const agentId = req.params.agentId as string;
+const getAgentCustomersByAdmin = catchAsync(
+  async (req: Request, res: Response) => {
+    const decoded = req.user as JwtPayload;
+    const agentId = req.params.agentId as string;
 
-  const result = await UserServices.getCustomersByAgent({
-    query: req.query as Record<string, string>,
-    agentId,
-    requesterId: decoded.userId,
-    requesterRole: decoded.role,
-  });
+    const result = await UserServices.getCustomersByAgent({
+      query: req.query as Record<string, string>,
+      agentId,
+      requesterId: decoded.userId,
+      requesterRole: decoded.role,
+    });
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: "Agent Customers Retrieved Successfully",
-    data: result.data,
-    meta: result.meta,
-    stats: result.stats,
-  });
-});
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Agent Customers Retrieved Successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
+    });
+  },
+);
 
 // Agent Leader — customers of an agent under their leadership (agentId from params, ownership validated)
-const getAgentCustomersByLeader = catchAsync(async (req: Request, res: Response) => {
-  const decoded = req.user as JwtPayload;
-  const agentId = req.params.agentId as string;
+const getAgentCustomersByLeader = catchAsync(
+  async (req: Request, res: Response) => {
+    const decoded = req.user as JwtPayload;
+    const agentId = req.params.agentId as string;
 
-  const result = await UserServices.getCustomersByAgent({
-    query: req.query as Record<string, string>,
-    agentId,
-    requesterId: decoded.userId,
-    requesterRole: decoded.role,
-  });
+    const result = await UserServices.getCustomersByAgent({
+      query: req.query as Record<string, string>,
+      agentId,
+      requesterId: decoded.userId,
+      requesterRole: decoded.role,
+    });
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: "Agent Customers Retrieved Successfully",
-    data: result.data,
-    meta: result.meta,
-    stats: result.stats
-  });
-});
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Agent Customers Retrieved Successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
+    });
+  },
+);
 
 export const UserControllers = {
   createUser,
@@ -372,6 +420,8 @@ export const UserControllers = {
   deleteUser,
   updateProfile,
   updateUserTrash,
+  restoreUser,
+  permanentDeleteUser,
   // new
   getAllCustomers,
   getMyCustomers,
@@ -380,6 +430,7 @@ export const UserControllers = {
   getAllAgentLeaders,
   getMyAgentLeaderCustomers,
   getAgentLeaderCustomersByAdmin,
+  getMyTrashAgents,
   // agent-wise customer controllers
   getMyAgentCustomers,
   getAgentCustomersByAdmin,

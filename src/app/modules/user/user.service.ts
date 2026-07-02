@@ -23,7 +23,15 @@ const getDayBoundariesUTC = (dateStr: string) => {
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0),
   );
   const end = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999),
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
   );
   return { start, end };
 };
@@ -54,8 +62,8 @@ const buildDateFilter = (
 
 const buildQueryObj = (query: Record<string, string>) => {
   const startDateStr = query["startDate"];
-  const endDateStr   = query["endDate"];
-  const dateFilter   = buildDateFilter(startDateStr, endDateStr);
+  const endDateStr = query["endDate"];
+  const dateFilter = buildDateFilter(startDateStr, endDateStr);
 
   delete query.startDate;
   delete query.endDate;
@@ -73,10 +81,16 @@ const getUserStats = async (match: Record<string, any>) => {
     {
       $group: {
         _id: null,
-        total:    { $sum: 1 },
-        active:   { $sum: { $cond: [{ $eq: ["$isActive", IsActive.ACTIVE] }, 1, 0] } },
-        inactive: { $sum: { $cond: [{ $eq: ["$isActive", IsActive.INACTIVE] }, 1, 0] } },
-        blocked:  { $sum: { $cond: [{ $eq: ["$isActive", IsActive.BLOCKED] }, 1, 0] } },
+        total: { $sum: 1 },
+        active: {
+          $sum: { $cond: [{ $eq: ["$isActive", IsActive.ACTIVE] }, 1, 0] },
+        },
+        inactive: {
+          $sum: { $cond: [{ $eq: ["$isActive", IsActive.INACTIVE] }, 1, 0] },
+        },
+        blocked: {
+          $sum: { $cond: [{ $eq: ["$isActive", IsActive.BLOCKED] }, 1, 0] },
+        },
       },
     },
     { $project: { _id: 0, total: 1, active: 1, inactive: 1, blocked: 1 } },
@@ -141,7 +155,10 @@ const updateUser = async (
   const isAdmin = decodedToken.role === Role.ADMIN;
 
   if (!isSuperAdmin && userId !== decodedToken.userId) {
-    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this user");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You are not authorized to update this user",
+    );
   }
 
   if (!isSuperAdmin) {
@@ -153,29 +170,52 @@ const updateUser = async (
     delete payload.createdBy;
   }
 
-  if (isSuperAdmin && userId === decodedToken.userId && payload.role && payload.role !== Role.SUPER_ADMIN) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot change your own role");
+  if (
+    isSuperAdmin &&
+    userId === decodedToken.userId &&
+    payload.role &&
+    payload.role !== Role.SUPER_ADMIN
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You cannot change your own role",
+    );
   }
 
-  if (isSuperAdmin && userId === decodedToken.userId && payload.isDeleted === true) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot delete your own account");
+  if (
+    isSuperAdmin &&
+    userId === decodedToken.userId &&
+    payload.isDeleted === true
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You cannot delete your own account",
+    );
   }
 
-  if (isSuperAdmin && userId === decodedToken.userId && payload.isActive === IsActive.BLOCKED) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot block your own account");
+  if (
+    isSuperAdmin &&
+    userId === decodedToken.userId &&
+    payload.isActive === IsActive.BLOCKED
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You cannot block your own account",
+    );
   }
 
   if (payload.password && !isSuperAdmin) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Password must be changed using change password endpoint");
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Password must be changed using change password endpoint",
+    );
   }
 
-  if(payload.password){
+  if (payload.password) {
     payload.password = await bcryptjs.hash(
       payload.password as string,
       Number(envVars.BCRYPT_SALT_ROUND),
     );
-
-    
   }
 
   const updatedUser = await User.findByIdAndUpdate(userId, payload, {
@@ -191,10 +231,95 @@ const getMe = async (userId: string) => {
   return { data: user };
 };
 
+const getMyTrashAgents = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.AGENT,
+    isDeleted: true,
+    agentLeader: new Types.ObjectId(userId),
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("agentLeader", "name phone"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.AGENT,
+    isDeleted: true,
+    agentLeader: new Types.ObjectId(userId),
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
 const getSingleUser = async (id: string) => {
   const user = await User.findById(id).select("-password");
   if (!user) throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
   return { data: user };
+};
+
+const restoreUser = async (id: string) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
+  }
+
+  if (!user.isDeleted) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "User is not in trash",
+    );
+  }
+
+  const restoredUser = await User.findByIdAndUpdate(
+    id,
+    { isDeleted: false },
+    {
+      new: true,
+      runValidators: true,
+    },
+  ).select("-password");
+
+  return { data: restoredUser };
+};
+
+const permanentDeleteUser = async (id: string) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
+  }
+
+  if (!user.isDeleted) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Move user to trash before permanent deletion",
+    );
+  }
+
+  await User.findByIdAndDelete(id);
+
+  return { data: null };
 };
 
 const deleteUser = async (id: string) => {
@@ -218,7 +343,13 @@ const getAllUsers = async (query: Record<string, string>) => {
   );
 
   const [data, meta] = await Promise.all([
-    queryBuilder.filter().search(userSearchableFields).sort().fields().paginate().build(),
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build(),
     queryBuilder.getMeta(),
   ]);
 
@@ -235,10 +366,16 @@ const getAllUsers = async (query: Record<string, string>) => {
     {
       $group: {
         _id: "$role",
-        total:    { $sum: 1 },
-        active:   { $sum: { $cond: [{ $eq: ["$isActive", IsActive.ACTIVE] }, 1, 0] } },
-        inactive: { $sum: { $cond: [{ $eq: ["$isActive", IsActive.INACTIVE] }, 1, 0] } },
-        blocked:  { $sum: { $cond: [{ $eq: ["$isActive", IsActive.BLOCKED] }, 1, 0] } },
+        total: { $sum: 1 },
+        active: {
+          $sum: { $cond: [{ $eq: ["$isActive", IsActive.ACTIVE] }, 1, 0] },
+        },
+        inactive: {
+          $sum: { $cond: [{ $eq: ["$isActive", IsActive.INACTIVE] }, 1, 0] },
+        },
+        blocked: {
+          $sum: { $cond: [{ $eq: ["$isActive", IsActive.BLOCKED] }, 1, 0] },
+        },
       },
     },
   ]);
@@ -246,10 +383,10 @@ const getAllUsers = async (query: Record<string, string>) => {
   // build role → stats lookup map
   const roleMap = agg.reduce<Record<string, any>>((map, item) => {
     map[item._id] = {
-      total:    item.total,
-      active:   item.active,
+      total: item.total,
+      active: item.active,
       inactive: item.inactive,
-      blocked:  item.blocked,
+      blocked: item.blocked,
     };
     return map;
   }, {});
@@ -258,11 +395,11 @@ const getAllUsers = async (query: Record<string, string>) => {
 
   const stats = {
     total: agg.reduce((sum, item) => sum + item.total, 0),
-    superAdmin:  roleMap[Role.SUPER_ADMIN]  || { ...empty },
-    admin:       roleMap[Role.ADMIN]        || { ...empty },
+    superAdmin: roleMap[Role.SUPER_ADMIN] || { ...empty },
+    admin: roleMap[Role.ADMIN] || { ...empty },
     agentLeader: roleMap[Role.AGENT_LEADER] || { ...empty },
-    agent:       roleMap[Role.AGENT]        || { ...empty },
-    customer:    roleMap[Role.CUSTOMER]     || { ...empty },
+    agent: roleMap[Role.AGENT] || { ...empty },
+    customer: roleMap[Role.CUSTOMER] || { ...empty },
   };
 
   return { data, meta, stats };
@@ -277,7 +414,13 @@ const getAllTrashUsers = async (query: Record<string, string>) => {
   );
 
   const [data, meta] = await Promise.all([
-    queryBuilder.filter().search(userSearchableFields).sort().fields().paginate().build(),
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build(),
     queryBuilder.getMeta(),
   ]);
 
@@ -324,24 +467,31 @@ const getAllAgents = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
-
-
-const updateProfile = async (payload: Partial<IUser>, decodedToken: JwtPayload) => {
+const updateProfile = async (
+  payload: Partial<IUser>,
+  decodedToken: JwtPayload,
+) => {
   const user = await User.findById(decodedToken.userId);
   if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
 
   if (payload.password) {
-    throw new AppError(httpStatus.FORBIDDEN, "You can't change your password here");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can't change your password here",
+    );
   }
 
-  const updatedUser = await User.findByIdAndUpdate(decodedToken.userId, payload, {
-    new: true,
-    runValidators: true,
-  });
+  const updatedUser = await User.findByIdAndUpdate(
+    decodedToken.userId,
+    payload,
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
   return { data: updatedUser };
 };
-
 
 // Admin / Super Admin — retrieve all customers
 const getAllCustomers = async (query: Record<string, string>) => {
@@ -556,7 +706,7 @@ const getAllAgentLeaderCustomers = async ({
 const getCustomersByAgent = async ({
   query,
   agentId,
-  requesterId,   // userId from decoded token
+  requesterId, // userId from decoded token
   requesterRole, // role from decoded token
 }: {
   query: Record<string, string>;
@@ -615,7 +765,12 @@ const getCustomersByAgent = async ({
     ...buildDateFilter(startDateStr, endDateStr),
   });
 
-  return { data, meta, stats, agent: { _id: agent._id, name: agent.name, phone: agent.phone } };
+  return {
+    data,
+    meta,
+    stats,
+    agent: { _id: agent._id, name: agent.name, phone: agent.phone },
+  };
 };
 
 export const UserServices = {
@@ -624,10 +779,13 @@ export const UserServices = {
   getSingleUser,
   updateUser,
   updateProfile,
+  restoreUser,
+  permanentDeleteUser,
   getAllUsers,
   getAllTrashUsers,
   deleteUser,
   getAllCustomers,
+  getMyTrashAgents,
   getMyCustomers,
   getMyAgents,
   getAllAgents,

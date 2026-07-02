@@ -1,10 +1,7 @@
 import express from "express";
 import { UserControllers } from "./user.controller";
 import { validateRequest } from "../../middlewares/validateRequest";
-import {
-  createUserZodSchema,
-  updateUserZodSchema,
-} from "./user.validation";
+import { createUserZodSchema, updateUserZodSchema } from "./user.validation";
 import { checkAuth } from "../../middlewares/checkAuth";
 import { Role } from "./user.interface";
 import { multerUpload } from "../../config/multer.config";
@@ -21,11 +18,7 @@ router.post(
 );
 
 // ─── PROFILE ───────────────────────────────────────────────────────────────
-router.get(
-  "/me",
-  checkAuth(...Object.values(Role)),
-  UserControllers.getMe,
-);
+router.get("/me", checkAuth(...Object.values(Role)), UserControllers.getMe);
 
 router.patch(
   "/update-profile",
@@ -69,45 +62,51 @@ router.get(
 
 // ─── AGENT LEADER — own resources ─────────────────────────────────────────
 router.get(
-  "/my-agents",                          // own agents
+  "/my-agents", // own agents
   checkAuth(Role.AGENT_LEADER),
   UserControllers.getMyAgents,
 );
 
 router.get(
-  "/my-leader-customers",                // customers created by own agents
+  "/my-trash-agents",
+  checkAuth(Role.AGENT_LEADER),
+  UserControllers.getMyTrashAgents,
+);
+
+router.get(
+  "/my-leader-customers", // customers created by own agents
   checkAuth(Role.AGENT_LEADER),
   UserControllers.getMyAgentLeaderCustomers,
 );
 
 router.get(
-  "/leader-agent-customers/:agentId",   // customers of a specific agent under this leader
+  "/leader-agent-customers/:agentId", // customers of a specific agent under this leader
   checkAuth(Role.AGENT_LEADER),
   UserControllers.getAgentCustomersByLeader,
 );
 
 // ─── AGENT — own resources ───
 router.get(
-  "/my-customers",                       // own customers
+  "/my-customers", // own customers
   checkAuth(Role.AGENT),
   UserControllers.getMyCustomers,
 );
 
 router.get(
-  "/my-agent-customers",                 // same as my-customers but via getCustomersByAgent service
+  "/my-agent-customers", // same as my-customers but via getCustomersByAgent service
   checkAuth(Role.AGENT),
   UserControllers.getMyAgentCustomers,
 );
 
 // ─── ADMIN / SUPER ADMIN — agent-leader scoped ────
 router.get(
-  "/agent-leader-customers/:agentLeaderId",  // all customers under a specific leader
+  "/agent-leader-customers/:agentLeaderId", // all customers under a specific leader
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   UserControllers.getAgentLeaderCustomersByAdmin,
 );
 
 router.get(
-  "/agent-customers/:agentId",               // all customers of a specific agent
+  "/agent-customers/:agentId", // all customers of a specific agent
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   UserControllers.getAgentCustomersByAdmin,
 );
@@ -127,9 +126,23 @@ router.patch(
   UserControllers.updateUser,
 );
 
+// Restore user from trash
+router.patch(
+  "/restore/:id",
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  UserControllers.restoreUser,
+);
+
+// Permanently delete user
+router.delete(
+  "/permanent-delete/:id",
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  UserControllers.permanentDeleteUser,
+);
+
 router.delete(
   "/:id",
-  checkAuth(Role.SUPER_ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
   UserControllers.deleteUser,
 );
 
