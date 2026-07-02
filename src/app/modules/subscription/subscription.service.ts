@@ -15,6 +15,11 @@ import { PaymentService } from "../payment/payment.service";
 import { sendSMS } from "../../utils/sendSms";
 import { PlanType } from "../package/insurance-package.interface";
 
+import {
+  SubscribeFor,
+  IBeneficiary,
+} from "./subscription.interface";
+
 const createSubscription = async (
   payload: Partial<ISubscription> & {
     customerPayload?: {
@@ -76,6 +81,29 @@ const createSubscription = async (
       );
     }
 
+    // Subscribe-for / beneficiary validation
+    const subscribeFor = payload.subscribeFor ?? SubscribeFor.SELF;
+
+    let beneficiary: IBeneficiary | undefined;
+
+    if (subscribeFor === SubscribeFor.OTHER) {
+      const b = payload.beneficiary;
+
+      if (!b?.name?.trim() || !b?.phone?.trim() || !b?.relationship?.trim()) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "Beneficiary name, phone and relationship are required",
+        );
+      }
+
+      beneficiary = {
+        name: b.name.trim(),
+        phone: b.phone.trim(),
+        relationship: b.relationship.trim(),
+        ...(b.dateOfBirth && { dateOfBirth: b.dateOfBirth }),
+      };
+    }
+
     // Package Validation
     const insurancePackage = await InsurancePackage.findById(
       payload.package,
@@ -123,18 +151,46 @@ const createSubscription = async (
     }
 
     // Prevent Duplicate Active Subscription
-    const existingSubscription =
-      await Subscription.findOne({
+    // A customer can hold multiple subscriptions for the same package as
+    // long as each one covers a different person (self, or a distinct
+    // beneficiary identified by phone). We only block a true duplicate:
+    // same customer + same package + same "covered person".
+    // const duplicateQuery: Record<string, unknown> = {
+    //   customer: customerId,
+    //   package: insurancePackage._id,
+    //   isDeleted: false,
+    //   subscribeFor,
+    // };
+
+    // if (subscribeFor === SubscribeFor.OTHER && beneficiary) {
+    //   duplicateQuery["beneficiary.phone"] = beneficiary.phone;
+    // }
+
+    // const existingSubscription = await Subscription.findOne(duplicateQuery);
+
+    // if (existingSubscription) {
+    //   throw new AppError(
+    //     httpStatus.BAD_REQUEST,
+    //     subscribeFor === SubscribeFor.OTHER
+    //       ? "A subscription for this package already exists for this beneficiary"
+    //       : "Customer already has an active subscription for this package",
+    //   );
+    // }
+
+    if (subscribeFor === SubscribeFor.SELF) {
+      const existingSubscription = await Subscription.findOne({
         customer: customerId,
         package: insurancePackage._id,
+        subscribeFor: SubscribeFor.SELF,
         isDeleted: false,
       });
 
-    if (existingSubscription) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "Customer already has an active subscription for this package",
-      );
+      if (existingSubscription) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "Customer already has an active subscription for this package",
+        );
+      }
     }
 
     const transactionId = `TXN-${Date.now()}`;
@@ -169,6 +225,10 @@ const createSubscription = async (
           isLifetime:
             payload.planType === PlanType.LIFETIME,
 
+          subscribeFor,
+
+          ...(beneficiary && { beneficiary }),
+
           createdBy: new Types.ObjectId(userId),
 
           autoRenew: payload.autoRenew ?? false,
@@ -197,8 +257,6 @@ const createSubscription = async (
       }
 
     );
-
-
 
     await session.commitTransaction();
     session.endSession();
