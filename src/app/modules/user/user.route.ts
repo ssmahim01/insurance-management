@@ -37,7 +37,7 @@ router.get(
 
 router.get(
   "/all-trash-users",
-  checkAuth(Role.SUPER_ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   UserControllers.getAllTrashUsers,
 );
 
@@ -129,20 +129,20 @@ router.patch(
 // Restore user from trash
 router.patch(
   "/restore/:id",
-  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER),
   UserControllers.restoreUser,
 );
 
 // Permanently delete user
 router.delete(
   "/permanent-delete/:id",
-  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.ADMIN),
   UserControllers.permanentDeleteUser,
 );
 
 router.delete(
   "/:id",
-  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.ADMIN),
   UserControllers.deleteUser,
 );
 

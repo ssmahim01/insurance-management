@@ -77,6 +77,37 @@ const getAgentLeaderSubscriptions = catchAsync(
     },
 );
 
+const restoreSubscription = catchAsync(
+  async (req: Request, res: Response) => {
+    const result =
+      await SubscriptionServices.restoreSubscription(
+        req.params.id as string,
+      );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Subscription restored successfully",
+      data: result,
+    });
+  },
+);
+
+const permanentDeleteSubscription = catchAsync(
+  async (req: Request, res: Response) => {
+    await SubscriptionServices.permanentDeleteSubscription(
+      req.params.id as string,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Subscription permanently deleted successfully",
+      data: null,
+    });
+  },
+);
+
 const getAgentLeaderSubscriptionsByAdmin = catchAsync(
   async (req: Request, res: Response) => {
     const query = req.query;
@@ -189,6 +220,8 @@ export const SubscriptionControllers = {
     getAllTrashSubscriptions,
     getAgentsAllSubscriptions,
     getMySubscriptions,
+    permanentDeleteSubscription,
+    restoreSubscription,
     getAgentLeaderSubscriptions,
     getAgentLeaderSubscriptionsByAdmin
 };

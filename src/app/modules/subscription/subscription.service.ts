@@ -1,8 +1,11 @@
-
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { Subscription } from "./subscription.model";
-import { ISubscription, PaymentStatus, SubscriptionStatus } from "./subscription.interface";
+import {
+  ISubscription,
+  PaymentStatus,
+  SubscriptionStatus,
+} from "./subscription.interface";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { subscriptionSearchableFields } from "./subscription.constants";
 import { User } from "../user/user.model";
@@ -15,10 +18,7 @@ import { PaymentService } from "../payment/payment.service";
 import { sendSMS } from "../../utils/sendSms";
 import { PlanType } from "../package/insurance-package.interface";
 
-import {
-  SubscribeFor,
-  IBeneficiary,
-} from "./subscription.interface";
+import { SubscribeFor, IBeneficiary } from "./subscription.interface";
 
 const createSubscription = async (
   payload: Partial<ISubscription> & {
@@ -43,17 +43,12 @@ const createSubscription = async (
       const existingCustomer = await User.findById(payload.customer);
 
       if (!existingCustomer) {
-        throw new AppError(
-          httpStatus.NOT_FOUND,
-          "Customer not found",
-        );
+        throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
       }
 
       customerId = existingCustomer._id;
       customer = existingCustomer;
-    }
-
-    else if (payload.customerPayload) {
+    } else if (payload.customerPayload) {
       const existingCustomer = await User.findOne({
         phone: payload.customerPayload.phone,
       });
@@ -62,19 +57,16 @@ const createSubscription = async (
         customerId = existingCustomer._id;
         customer = existingCustomer;
       } else {
-        const createdCustomer =
-          await UserServices.createUserService({
-            ...payload.customerPayload,
-            role: Role.CUSTOMER,
-            createdBy: new Types.ObjectId(userId),
-          });
+        const createdCustomer = await UserServices.createUserService({
+          ...payload.customerPayload,
+          role: Role.CUSTOMER,
+          createdBy: new Types.ObjectId(userId),
+        });
 
         customerId = createdCustomer._id as Types.ObjectId;
-        customer = createdCustomer
+        customer = createdCustomer;
       }
-    }
-
-    else {
+    } else {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         "Customer information is required",
@@ -105,15 +97,10 @@ const createSubscription = async (
     }
 
     // Package Validation
-    const insurancePackage = await InsurancePackage.findById(
-      payload.package,
-    );
+    const insurancePackage = await InsurancePackage.findById(payload.package);
 
     if (!insurancePackage) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        "Package not found",
-      );
+      throw new AppError(httpStatus.NOT_FOUND, "Package not found");
     }
 
     // Plan Validation
@@ -145,9 +132,7 @@ const createSubscription = async (
     if (payload.planType !== PlanType.LIFETIME) {
       endDate = new Date(startDate);
 
-      endDate.setMonth(
-        endDate.getMonth() + selectedPlan.durationInMonths,
-      );
+      endDate.setMonth(endDate.getMonth() + selectedPlan.durationInMonths);
     }
 
     // Prevent Duplicate Active Subscription
@@ -222,8 +207,7 @@ const createSubscription = async (
 
           endDate,
 
-          isLifetime:
-            payload.planType === PlanType.LIFETIME,
+          isLifetime: payload.planType === PlanType.LIFETIME,
 
           subscribeFor,
 
@@ -236,37 +220,33 @@ const createSubscription = async (
           isDeleted: false,
 
           isActive: false,
-        }
+        },
       ],
-      { session });
+      { session },
+    );
 
     const amount = subscription[0].price;
 
     if (!amount) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "Course price not found"
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, "Course price not found");
     }
 
-    await PaymentModel.create(
-      {
-        subscription: subscription[0]._id,
-        transactionId,
-        amount,
-      }
-
-    );
+    await PaymentModel.create({
+      subscription: subscription[0]._id,
+      transactionId,
+      amount,
+    });
 
     await session.commitTransaction();
     session.endSession();
 
-
-    const paymentInitRes = await PaymentService.initPayment(subscription[0]._id);
+    const paymentInitRes = await PaymentService.initPayment(
+      subscription[0]._id,
+    );
 
     await sendSMS(
       customer.phone,
-      `Your payment url is ${paymentInitRes?.paymentUrl}`
+      `Your payment url is ${paymentInitRes?.paymentUrl}`,
     );
 
     return {
@@ -321,10 +301,7 @@ const resolveCustomerFilter = async (
 
   // match subscriptions where the customer OR the creator matches
   return {
-    $or: [
-      { customer: { $in: userIds } },
-      { createdBy: { $in: userIds } },
-    ],
+    $or: [{ customer: { $in: userIds } }, { createdBy: { $in: userIds } }],
   };
 };
 
@@ -340,7 +317,15 @@ const getDayBoundariesUTC = (dateStr: string) => {
   );
 
   const end = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999),
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
   );
 
   return { start, end };
@@ -511,11 +496,7 @@ const getSubscriptionStats = async (statsMatch: Record<string, any>) => {
 
         totalRevenue: {
           $sum: {
-            $cond: [
-              { $eq: ["$paymentStatus", "PAID"] },
-              "$price",
-              0,
-            ],
+            $cond: [{ $eq: ["$paymentStatus", "PAID"] }, "$price", 0],
           },
         },
       },
@@ -622,10 +603,7 @@ const getAllSubscriptionsByAgent = async ({
     .paginate()
     .build()
     .populate("customer", "name phone")
-    .populate(
-      "package",
-      "name slug description coverageAmount",
-    )
+    .populate("package", "name slug description coverageAmount")
     .populate("createdBy", "name phone role");
 
   const meta = await queryBuilder.getMeta();
@@ -661,10 +639,7 @@ const getMySubscriptions = async ({
   const customerFilter = await resolveCustomerFilter(query.searchTerm);
 
   const ownershipFilter = {
-    $or: [
-      { createdBy: userId },
-      { customer: userId },
-    ],
+    $or: [{ createdBy: userId }, { customer: userId }],
   };
 
   // =========================
@@ -689,10 +664,7 @@ const getMySubscriptions = async ({
     .paginate()
     .build()
     .populate("customer", "name phone")
-    .populate(
-      "package",
-      "name slug description coverageAmount",
-    )
+    .populate("package", "name slug description coverageAmount")
     .populate("createdBy", "name phone role");
 
   const meta = await queryBuilder.getMeta();
@@ -839,10 +811,7 @@ const getSingleSubscription = async (id: string) => {
     .populate("createdBy", "name role");
 
   if (!subscription) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Subscription not found",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, "Subscription not found");
   }
 
   return subscription;
@@ -852,10 +821,7 @@ const softDeleteSubscription = async (id: string) => {
   const subscription = await Subscription.findById(id);
 
   if (!subscription) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Subscription not found",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, "Subscription not found");
   }
 
   return await Subscription.findByIdAndUpdate(
@@ -865,6 +831,21 @@ const softDeleteSubscription = async (id: string) => {
   );
 };
 
+const permanentDeleteSubscription = async (id: string) => {
+  const subscription = await Subscription.findById(id);
+
+  if (!subscription) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Subscription not found",
+    );
+  }
+
+  await Subscription.findByIdAndDelete(id);
+
+  return null;
+};
+
 const updateSubscription = async (
   id: string,
   payload: Partial<ISubscription>,
@@ -872,10 +853,7 @@ const updateSubscription = async (
   const existing = await Subscription.findById(id);
 
   if (!existing) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Subscription not found",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, "Subscription not found");
   }
 
   // prevent invalid updates
@@ -899,21 +877,33 @@ const updateSubscription = async (
     const startDate = payload.startDate || existing.startDate;
 
     payload.endDate = new Date(
-      new Date(startDate).getTime() +
-      duration * 30 * 24 * 60 * 60 * 1000,
+      new Date(startDate).getTime() + duration * 30 * 24 * 60 * 60 * 1000,
     );
   }
 
-  const updated = await Subscription.findByIdAndUpdate(
+  const updated = await Subscription.findByIdAndUpdate(id, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  return updated;
+};
+
+const restoreSubscription = async (id: string) => {
+  const subscription = await Subscription.findById(id);
+
+  if (!subscription) {
+    throw new AppError(httpStatus.NOT_FOUND, "Subscription not found");
+  }
+
+  return await Subscription.findByIdAndUpdate(
     id,
-    payload,
+    { isDeleted: false },
     {
       new: true,
       runValidators: true,
     },
   );
-
-  return updated;
 };
 
 export const SubscriptionServices = {
@@ -923,7 +913,9 @@ export const SubscriptionServices = {
   getSingleSubscription,
   softDeleteSubscription,
   updateSubscription,
+  permanentDeleteSubscription,
+  restoreSubscription,
   getAllSubscriptionsByAgent,
   getAgentLeaderSubscriptions,
-  getMySubscriptions
+  getMySubscriptions,
 };

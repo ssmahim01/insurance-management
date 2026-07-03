@@ -8,22 +8,22 @@ import { createSubscriptionValidationSchema } from "./subscription.validation";
 const router = express.Router();
 
 router.post(
-    "/create-subscription",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.CUSTOMER),
-    validateRequest(createSubscriptionValidationSchema),
-    SubscriptionControllers.createSubscription,
+  "/create-subscription",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.CUSTOMER),
+  validateRequest(createSubscriptionValidationSchema),
+  SubscriptionControllers.createSubscription,
 );
 
 router.get(
-    "/all-subscriptions",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
-    SubscriptionControllers.getAllSubscriptions,
+  "/all-subscriptions",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  SubscriptionControllers.getAllSubscriptions,
 );
 
 router.get(
-    "/agents-all-subscriptions/:id",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
-    SubscriptionControllers.getAgentsAllSubscriptions,
+  "/agents-all-subscriptions/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  SubscriptionControllers.getAgentsAllSubscriptions,
 );
 router.get(
   "/leader-subscriptions/me",
@@ -38,33 +38,45 @@ router.get(
 );
 
 router.get(
-    "/my-subscriptions",
-    checkAuth(...Object.values(Role)),
-    SubscriptionControllers.getMySubscriptions,
+  "/my-subscriptions",
+  checkAuth(...Object.values(Role)),
+  SubscriptionControllers.getMySubscriptions,
 );
 
 router.get(
-    "/all-trash-subscriptions",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
-    SubscriptionControllers.getAllTrashSubscriptions,
+  "/all-trash-subscriptions",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  SubscriptionControllers.getAllTrashSubscriptions,
 );
 
 router.get(
-    "/:id",
-    checkAuth(...Object.values(Role)),
-    SubscriptionControllers.getSingleSubscription,
+  "/:id",
+  checkAuth(...Object.values(Role)),
+  SubscriptionControllers.getSingleSubscription,
 );
 
 router.patch(
-    "/soft-delete/:id",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
-    SubscriptionControllers.softDeleteSubscription,
+  "/soft-delete/:id",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  SubscriptionControllers.softDeleteSubscription,
 );
 
 router.patch(
-    "/:id",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT),
-    SubscriptionControllers.updateSubscription,
+  "/restore/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  SubscriptionControllers.restoreSubscription,
+);
+
+router.delete(
+  "/permanent-delete/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  SubscriptionControllers.permanentDeleteSubscription,
+);
+
+router.patch(
+  "/:id",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT),
+  SubscriptionControllers.updateSubscription,
 );
 
 export const subscriptionRoutes = router;
