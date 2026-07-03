@@ -63,7 +63,7 @@ router.patch(
 
 router.patch(
     "/:id",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT),
+    checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT),
     SubscriptionControllers.updateSubscription,
 );
 
