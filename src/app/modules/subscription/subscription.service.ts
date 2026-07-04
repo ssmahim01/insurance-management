@@ -693,6 +693,66 @@ const getMySubscriptions = async ({
   };
 };
 
+const getMyTrashSubscriptions = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const { queryObj, dateType, startDateStr, endDateStr } =
+    buildDateAndStatusFilter(query);
+
+  const customerFilter = await resolveCustomerFilter(query.searchTerm);
+
+  const ownershipFilter = {
+    $or: [{ createdBy: userId }, { customer: userId }],
+  };
+
+  const baseQuery = Subscription.find({
+    isDeleted: true,
+    ...queryObj,
+    ...(customerFilter.$or
+      ? { $and: [ownershipFilter, customerFilter] }
+      : ownershipFilter),
+  });
+
+  const queryBuilder = new QueryBuilder(baseQuery, query);
+
+  const data = await queryBuilder
+    .filter()
+    .search(subscriptionSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name phone")
+    .populate("package", "name slug description coverageAmount")
+    .populate("createdBy", "name phone role");
+
+  const meta = await queryBuilder.getMeta();
+
+  const statsMatch = buildStatsMatch(
+    {
+      isDeleted: true,
+      $or: [
+        { createdBy: new Types.ObjectId(userId) },
+        { customer: new Types.ObjectId(userId) },
+      ],
+    },
+    dateType,
+    startDateStr,
+    endDateStr,
+  );
+  const stats = await getSubscriptionStats(statsMatch);
+
+  return {
+    data,
+    meta,
+    stats,
+  };
+};
+
 const getAllTrashSubscriptions = async (query: Record<string, string>) => {
   const { queryObj, dateType, startDateStr, endDateStr } =
     buildDateAndStatusFilter(query);
@@ -804,6 +864,62 @@ const getAgentLeaderSubscriptions = async ({
   };
 };
 
+const getAgentLeaderTrashSubscriptions = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const agents = await User.find({
+    agentLeader: userId,
+    role: Role.AGENT,
+  }).select("_id");
+
+  const agentIds = agents.map((a) => a._id);
+
+  const { queryObj, dateType, startDateStr, endDateStr } =
+    buildDateAndStatusFilter(query);
+
+  const customerFilter = await resolveCustomerFilter(query.searchTerm);
+
+  const baseQuery = Subscription.find({
+    isDeleted: true,
+    createdBy: { $in: agentIds },
+    ...queryObj,
+    ...customerFilter,
+  });
+
+  const queryBuilder = new QueryBuilder(baseQuery, query);
+
+  const data = await queryBuilder
+    .filter()
+    .search(subscriptionSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name phone")
+    .populate("package", "name slug description coverageAmount")
+    .populate("createdBy", "name phone role");
+
+  const meta = await queryBuilder.getMeta();
+
+  const statsMatch = buildStatsMatch(
+    { isDeleted: true, createdBy: { $in: agentIds } },
+    dateType,
+    startDateStr,
+    endDateStr,
+  );
+  const stats = await getSubscriptionStats(statsMatch);
+
+  return {
+    data,
+    meta,
+    stats,
+  };
+};
+
 const getSingleSubscription = async (id: string) => {
   const subscription = await Subscription.findById(id)
     .populate("customer")
@@ -835,10 +951,7 @@ const permanentDeleteSubscription = async (id: string) => {
   const subscription = await Subscription.findById(id);
 
   if (!subscription) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Subscription not found",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, "Subscription not found");
   }
 
   await Subscription.findByIdAndDelete(id);
@@ -917,5 +1030,7 @@ export const SubscriptionServices = {
   restoreSubscription,
   getAllSubscriptionsByAgent,
   getAgentLeaderSubscriptions,
+  getAgentLeaderTrashSubscriptions,
   getMySubscriptions,
+  getMyTrashSubscriptions,
 };

@@ -55,21 +55,33 @@ router.get(
   SubscriptionControllers.getSingleSubscription,
 );
 
+router.get(
+  "/my-trash-subscriptions",
+  checkAuth(Role.AGENT),
+  SubscriptionControllers.getMyTrashSubscriptions,
+);
+
+router.get(
+  "/leader-trash-subscriptions/me",
+  checkAuth(Role.AGENT_LEADER),
+  SubscriptionControllers.getAgentLeaderTrashSubscriptions,
+);
+
 router.patch(
   "/soft-delete/:id",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER),
   SubscriptionControllers.softDeleteSubscription,
 );
 
 router.patch(
   "/restore/:id",
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
   SubscriptionControllers.restoreSubscription,
 );
 
 router.delete(
   "/permanent-delete/:id",
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
   SubscriptionControllers.permanentDeleteSubscription,
 );
 

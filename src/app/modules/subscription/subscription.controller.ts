@@ -77,6 +77,40 @@ const getAgentLeaderSubscriptions = catchAsync(
     },
 );
 
+const getMyTrashSubscriptions = catchAsync(async (req: Request, res: Response) => {
+  const query = req.query;
+  const userId = req.user?.userId;
+
+  const result = await SubscriptionServices.getMyTrashSubscriptions({
+    query: query as Record<string, string>,
+    userId,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "My trash subscriptions retrieved successfully",
+    data: result,
+  });
+});
+
+const getAgentLeaderTrashSubscriptions = catchAsync(async (req: Request, res: Response) => {
+  const query = req.query;
+  const userId = req.user?.userId;
+
+  const result = await SubscriptionServices.getAgentLeaderTrashSubscriptions({
+    query: query as Record<string, string>,
+    userId,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Agent leader trash subscriptions retrieved successfully",
+    data: result,
+  });
+});
+
 const restoreSubscription = catchAsync(
   async (req: Request, res: Response) => {
     const result =
@@ -220,8 +254,10 @@ export const SubscriptionControllers = {
     getAllTrashSubscriptions,
     getAgentsAllSubscriptions,
     getMySubscriptions,
+    getMyTrashSubscriptions,
     permanentDeleteSubscription,
     restoreSubscription,
     getAgentLeaderSubscriptions,
+    getAgentLeaderTrashSubscriptions,
     getAgentLeaderSubscriptionsByAdmin
 };
