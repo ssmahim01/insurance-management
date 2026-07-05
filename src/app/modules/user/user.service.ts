@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import httpStatus from "http-status-codes";
 import { IsActive, IUser, Role } from "./user.interface";
@@ -467,6 +468,40 @@ const getAllAgents = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
+// Admin / Super Admin — retrieve all trash agents (regardless of leader)
+const getAllTrashAgents = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.AGENT,
+    isDeleted: true,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("agentLeader", "name phone")
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.AGENT,
+    isDeleted: true,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
 const updateProfile = async (
   payload: Partial<IUser>,
   decodedToken: JwtPayload,
@@ -636,6 +671,72 @@ const getAllAgentLeaders = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
+// Admin / Super Admin — retrieve all admins
+const getAllAdmins = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.ADMIN,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.ADMIN,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Admin / Super Admin — retrieve all trash admins
+const getAllTrashAdmins = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.ADMIN,
+    isDeleted: true,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.ADMIN,
+    isDeleted: true,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
 // Single service — accepts agentLeaderId as param.
 // Agent Leader (self): controller passes id from decoded token.
 // Admin / Super Admin: controller passes id from route params.
@@ -789,7 +890,10 @@ export const UserServices = {
   getMyCustomers,
   getMyAgents,
   getAllAgents,
+  getAllTrashAgents,
   getAllAgentLeaders,
+  getAllAdmins,
+  getAllTrashAdmins,
   getAllAgentLeaderCustomers,
   getCustomersByAgent,
 };

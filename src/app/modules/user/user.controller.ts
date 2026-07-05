@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -194,6 +195,22 @@ const getAllAgents = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Admin / Super Admin — retrieve all trash agents
+const getAllTrashAgents = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllTrashAgents(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Trash Agents Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
 const updateProfile = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const payload = req.body;
@@ -293,6 +310,38 @@ const getAllAgentLeaders = catchAsync(async (req: Request, res: Response) => {
     success: true,
     statusCode: httpStatus.OK,
     message: "All Agent Leaders Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Admin / Super Admin — retrieve all admins
+const getAllAdmins = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllAdmins(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Admins Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Admin / Super Admin — retrieve all trash admins
+const getAllTrashAdmins = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllTrashAdmins(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Trash Admins Retrieved Successfully",
     data: result.data,
     meta: result.meta,
     stats: result.stats,
@@ -427,7 +476,10 @@ export const UserControllers = {
   getMyCustomers,
   getMyAgents,
   getAllAgents,
+  getAllTrashAgents,
   getAllAgentLeaders,
+  getAllAdmins,
+  getAllTrashAdmins,
   getMyAgentLeaderCustomers,
   getAgentLeaderCustomersByAdmin,
   getMyTrashAgents,

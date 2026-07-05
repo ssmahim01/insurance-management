@@ -17,7 +17,7 @@ router.post(
   UserControllers.createUser,
 );
 
-// ─── PROFILE ───────────────────────────────────────────────────────────────
+// ─── PROFILE ───
 router.get("/me", checkAuth(...Object.values(Role)), UserControllers.getMe);
 
 router.patch(
@@ -28,7 +28,7 @@ router.patch(
   UserControllers.updateProfile,
 );
 
-// ─── ALL STAFF (non-customer) ──────────────────────────────────────────────
+// ─── ALL STAFF (non-customer) ───
 router.get(
   "/all-users",
   checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
@@ -52,6 +52,24 @@ router.get(
   "/all-agents",
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   UserControllers.getAllAgents,
+);
+
+router.get(
+  "/all-trash-agents",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllTrashAgents,
+);
+
+router.get(
+  "/all-admins",
+  checkAuth(Role.SUPER_ADMIN),
+  UserControllers.getAllAdmins,
+);
+
+router.get(
+  "/all-trash-admins",
+  checkAuth(Role.SUPER_ADMIN),
+  UserControllers.getAllTrashAdmins,
 );
 
 router.get(
