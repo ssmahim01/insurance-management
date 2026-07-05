@@ -13,11 +13,13 @@ dns.setServers(["1.1.1.1", "8.8.8.8"])
 const app = express()
 app.use(cookieParser());
 app.set("trust proxy", 1)
-app.use(express.urlencoded({extended: true}))
+app.use(express.urlencoded({ extended: true }))
 app.use(cors({
-     origin: [
+    origin: [
         envVars.FRONTEND_URL,
         "http://localhost:3000",
+        "https://shurokkha-frontend.vercel.app",
+        "https://shurokkhaa.vercel.app"
     ],
     credentials: true
 }))
