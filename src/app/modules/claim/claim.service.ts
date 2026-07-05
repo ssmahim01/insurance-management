@@ -156,6 +156,60 @@ const getAllClaims = async ({
   return { data, meta, stats };
 };
 
+const getClaimStats = async (match: Record<string, any>) => {
+  const agg = await Claim.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        total:    { $sum: 1 },
+        pending:  { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.PENDING] }, 1, 0] } },
+        approved: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.APPROVED] }, 1, 0] } },
+        rejected: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.REJECTED] }, 1, 0] } },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        total: 1,
+        pending: 1,
+        approved: 1,
+        rejected: 1,
+      },
+    },
+  ]);
+
+  return agg[0] || { total: 0, pending: 0, approved: 0, rejected: 0 };
+};
+
+const getAllTrashClaims = async ({
+  query,
+  user,
+}: {
+  query: Record<string, string>;
+  user: { userId: string; role: string };
+}) => {
+  const baseQuery = Claim.find({
+    isDeleted: true,
+  });
+
+  const queryBuilder = new QueryBuilder(baseQuery, query);
+
+  const claims = await queryBuilder
+    .filter()
+    .search(claimSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build();
+
+  const meta = await queryBuilder.getMeta();
+
+  const stats = await getClaimStats({ isDeleted: true });
+
+  return { data: claims, meta, stats };
+};
+
 // GET SINGLE CLAIM
 const getSingleClaim = async (id: string) => {
   const claim = await Claim.findById(id)
@@ -260,6 +314,32 @@ const softDeleteClaim = async (id: string) => {
   );
 };
 
+// RESTORE CLAIM
+const restoreClaim = async (id: string) => {
+  const existing = await Claim.findById(id);
+
+  if (!existing) {
+    throw new AppError(httpStatus.NOT_FOUND, "Claim not found");
+  }
+
+  return await Claim.findByIdAndUpdate(id, { isDeleted: false }, { new: true });
+};
+
+
+//Hard delete
+const deleteClaim = async (id: string) => {
+  const existing = await Claim.findById(id);
+
+  if (!existing) {
+    throw new AppError(httpStatus.NOT_FOUND, "Claim not found");
+  }
+
+  await Claim.findByIdAndDelete(id);
+
+  return null;
+};
+
+
 export const ClaimService = {
   createClaim,
   getAllClaims,
@@ -267,4 +347,7 @@ export const ClaimService = {
   updateClaim,
   reviewClaim,
   softDeleteClaim,
+  getAllTrashClaims,
+  deleteClaim,
+  restoreClaim,
 };
