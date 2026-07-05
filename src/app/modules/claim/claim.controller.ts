@@ -5,26 +5,6 @@ import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 
 import { ClaimService } from "./claim.service";
-import { JwtPayload } from "jsonwebtoken";
-
-// const createClaim = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const result =
-//       await ClaimService.createClaim(
-//         req.body,
-//       );
-
-//     sendResponse(res, {
-//       statusCode:
-//         httpStatus.CREATED,
-//       success: true,
-//       message:
-//         "Claim created successfully",
-//       data: result,
-//     });
-//   },
-// );
-
 
 const createClaim = catchAsync(
   async (
@@ -95,6 +75,26 @@ const getAllClaims = catchAsync(
   },
 );
 
+const getAllTrashClaims = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await ClaimService.getAllTrashClaims({
+      query: req.query as Record<string, string>,
+      user: {
+        userId: (req.user as any).userId,
+        role: (req.user as any).role,
+      },
+    });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "All trash claims retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
+    });
+  },
+);
 const getSingleClaim =
   catchAsync(
     async (
@@ -117,30 +117,6 @@ const getSingleClaim =
       });
     },
   );
-
-// const updateClaim =
-//   catchAsync(
-//     async (
-//       req: Request,
-//       res: Response,
-//     ) => {
-//       const result =
-//         await ClaimService.updateClaim(
-//           req.params
-//             .id as string,
-//           req.body,
-//         );
-
-//       sendResponse(res, {
-//         statusCode:
-//           httpStatus.OK,
-//         success: true,
-//         message:
-//           "Claim updated successfully",
-//         data: result,
-//       });
-//     },
-//   );
 
 const updateClaim = catchAsync(
   async (
@@ -222,11 +198,39 @@ const softDeleteClaim =
           httpStatus.OK,
         success: true,
         message:
-          "Claim deleted successfully",
+          "Claim soft deleted successfully",
         data: result,
       });
     },
   );
+
+  const restoreClaim = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await ClaimService.restoreClaim(req.params.id as string);
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Claim restored successfully",
+      data: result,
+    });
+  },
+);
+
+const deleteClaim = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await ClaimService.deleteClaim(
+      req.params.id as string,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Claim permanently deleted successfully",
+      data: result,
+    });
+  },
+);
 
 export const ClaimController = {
   createClaim,
@@ -235,4 +239,7 @@ export const ClaimController = {
   updateClaim,
   reviewClaim,
   softDeleteClaim,
+  getAllTrashClaims,
+  deleteClaim,
+  restoreClaim,
 };

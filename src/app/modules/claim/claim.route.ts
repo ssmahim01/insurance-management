@@ -15,20 +15,6 @@ import { multerUpload } from "../../config/multer.config";
 
 const router = Router();
 
-// Customer Create Claim
-// router.post(
-//   "/create",
-//   checkAuth(
-//     Role.CUSTOMER,
-//     Role.AGENT,
-//     Role.AGENT_LEADER,
-//   ),
-//   validateRequest(
-//     createClaimValidationSchema,
-//   ),
-//   ClaimController.createClaim,
-// );
-
 router.post(
     "/create",
     checkAuth(
@@ -53,6 +39,18 @@ router.get(
     ),
     ClaimController.getAllClaims,
 );
+// Get All Trash Claims
+router.get(
+    "/all-trash-claims",
+    checkAuth(
+        Role.SUPER_ADMIN,
+        Role.ADMIN,
+        Role.AGENT_LEADER,
+        Role.AGENT,
+        Role.CUSTOMER,
+    ),
+    ClaimController.getAllTrashClaims,
+);
 
 // Get Single Claim
 router.get(
@@ -66,18 +64,6 @@ router.get(
     ),
     ClaimController.getSingleClaim,
 );
-
-// Customer Resubmit / Update Claim
-// router.patch(
-//     "/:id",
-//     checkAuth(
-//         Role.CUSTOMER,
-//     ),
-//     validateRequest(
-//         updateClaimValidationSchema,
-//     ),
-//     ClaimController.updateClaim,
-// );
 
 router.patch(
   "/:id",
@@ -103,13 +89,29 @@ router.patch(
 );
 
 // Soft Delete Claim
+router.patch(
+    "/soft-delete/:id",
+    checkAuth(
+        Role.SUPER_ADMIN,
+        Role.ADMIN,
+    ),
+    ClaimController.softDeleteClaim,
+);
+// Restore Claim
+router.patch(
+  "/restore/:id",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  ClaimController.restoreClaim,
+);
+
+// Delete Claim
 router.delete(
     "/:id",
     checkAuth(
         Role.SUPER_ADMIN,
         Role.ADMIN,
     ),
-    ClaimController.softDeleteClaim,
+    ClaimController.deleteClaim,
 );
 
 export const ClaimRoutes = router;
