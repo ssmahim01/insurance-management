@@ -11,7 +11,7 @@ const router = express.Router();
 // ─── CREATE ────────────────────────────────────────────────────────────────
 router.post(
   "/create-user",
-  checkAuth(Role.SUPER_ADMIN, Role.AGENT, Role.AGENT_LEADER),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT, Role.AGENT_LEADER, Role.ADMIN, Role.MANAGER),
   multerUpload.single("picture"),
   validateRequest(createUserZodSchema),
   UserControllers.createUser,
@@ -31,7 +31,7 @@ router.patch(
 // ─── ALL STAFF (non-customer) ───
 router.get(
   "/all-users",
-  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   UserControllers.getAllUsers,
 );
 
@@ -44,19 +44,19 @@ router.get(
 // ─── SUPER ADMIN / ADMIN — role-specific lists ─────────────────────────────
 router.get(
   "/all-agent-leaders",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
   UserControllers.getAllAgentLeaders,
 );
 
 router.get(
   "/all-agents",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
   UserControllers.getAllAgents,
 );
 
 router.get(
   "/all-trash-agents",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
   UserControllers.getAllTrashAgents,
 );
 
@@ -73,8 +73,20 @@ router.get(
 );
 
 router.get(
-  "/all-customers",
+  "/all-managers",
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllManagers,
+);
+
+router.get(
+  "/all-trash-managers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllTrashManagers,
+);
+
+router.get(
+  "/all-customers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT, Role.MANAGER),
   UserControllers.getAllCustomers,
 );
 
@@ -119,13 +131,13 @@ router.get(
 // ─── ADMIN / SUPER ADMIN — agent-leader scoped ────
 router.get(
   "/agent-leader-customers/:agentLeaderId", // all customers under a specific leader
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
   UserControllers.getAgentLeaderCustomersByAdmin,
 );
 
 router.get(
   "/agent-customers/:agentId", // all customers of a specific agent
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
   UserControllers.getAgentCustomersByAdmin,
 );
 
@@ -147,14 +159,14 @@ router.patch(
 // Restore user from trash
 router.patch(
   "/restore/:id",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.MANAGER),
   UserControllers.restoreUser,
 );
 
 // Permanently delete user
 router.delete(
   "/permanent-delete/:id",
-  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.ADMIN, Role.MANAGER),
   UserControllers.permanentDeleteUser,
 );
 
