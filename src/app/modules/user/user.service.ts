@@ -398,6 +398,7 @@ const getAllUsers = async (query: Record<string, string>) => {
     total: agg.reduce((sum, item) => sum + item.total, 0),
     superAdmin: roleMap[Role.SUPER_ADMIN] || { ...empty },
     admin: roleMap[Role.ADMIN] || { ...empty },
+    manager: roleMap[Role.MANAGER] || { ...empty },
     agentLeader: roleMap[Role.AGENT_LEADER] || { ...empty },
     agent: roleMap[Role.AGENT] || { ...empty },
     customer: roleMap[Role.CUSTOMER] || { ...empty },
@@ -737,6 +738,72 @@ const getAllTrashAdmins = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
+// Admin / Super Admin — retrieve all managers
+const getAllManagers = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.MANAGER,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.MANAGER,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Admin / Super Admin — retrieve all trash managers
+const getAllTrashManagers = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.MANAGER,
+    isDeleted: true,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.MANAGER,
+    isDeleted: true,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
 // Single service — accepts agentLeaderId as param.
 // Agent Leader (self): controller passes id from decoded token.
 // Admin / Super Admin: controller passes id from route params.
@@ -894,6 +961,8 @@ export const UserServices = {
   getAllAgentLeaders,
   getAllAdmins,
   getAllTrashAdmins,
+  getAllManagers,
+  getAllTrashManagers,
   getAllAgentLeaderCustomers,
   getCustomersByAgent,
 };

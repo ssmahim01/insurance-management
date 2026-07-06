@@ -348,6 +348,39 @@ const getAllTrashAdmins = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+// Admin / Super Admin — retrieve all managers
+const getAllManagers = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllManagers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Managers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Admin / Super Admin — retrieve all trash managers
+const getAllTrashManagers = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllTrashManagers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Trash Managers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
 // Agent Leader — retrieve customers of own agents (id from decoded token)
 const getMyAgentLeaderCustomers = catchAsync(
   async (req: Request, res: Response) => {
@@ -471,7 +504,6 @@ export const UserControllers = {
   updateUserTrash,
   restoreUser,
   permanentDeleteUser,
-  // new
   getAllCustomers,
   getMyCustomers,
   getMyAgents,
@@ -480,10 +512,11 @@ export const UserControllers = {
   getAllAgentLeaders,
   getAllAdmins,
   getAllTrashAdmins,
+  getAllManagers,
+  getAllTrashManagers,
   getMyAgentLeaderCustomers,
   getAgentLeaderCustomersByAdmin,
   getMyTrashAgents,
-  // agent-wise customer controllers
   getMyAgentCustomers,
   getAgentCustomersByAdmin,
   getAgentCustomersByLeader,
