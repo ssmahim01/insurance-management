@@ -1,1 +1,1 @@
-export const partnerBranchSearchableFields = ["name", "phone" ]
+export const partnerBranchSearchableFields = ["branchName", "phone", "email" ]

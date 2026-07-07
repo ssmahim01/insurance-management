@@ -4,30 +4,16 @@ import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
 import { PartnerServices } from "./partner.service";
 
-// const createPartner = catchAsync(async (req: Request, res: Response) => {
-//   const userId = (req as any).user.userId;
-
-//   const result = await PartnerServices.createPartner(req.body.data, userId);
-
-//   sendResponse(res, {
-//     statusCode: httpStatus.CREATED,
-//     success: true,
-//     message: "Partner created successfully",
-//     data: result,
-//   });
-// });
-
-
 const createPartner = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user.userId;
-  const payload = req.body;           // ← directly req.body, parse করা লাগবে না
+  const payload = req.body;        
 
   console.log("Partner create payload ", payload)
 
 
   const file = req.file;
   if (file) {
-    payload.logo = file.path;         // ← cloudinary/multer যেটাই use করো
+    payload.logo = file.path;       
   }
 
   console.log("Payload after file ", payload)
@@ -99,20 +85,6 @@ const getSinglePartner = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// const updatePartner = catchAsync(async (req: Request, res: Response) => {
-//   const result = await PartnerServices.updatePartner(
-//     req.params.id as string,
-//     req.body
-//   );
-
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Partner updated successfully",
-//     data: result,
-//   });
-// });
-
 const softDeletePartner = catchAsync(async (req: Request, res: Response) => {
   const result = await PartnerServices.softDeletePartner(req.params.id as string);
 
@@ -135,6 +107,17 @@ const deletePartner = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const restorePartner = catchAsync(async (req: Request, res: Response) => {
+  const result = await PartnerServices.restorePartner(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner restored successfully",
+    data: result,
+  });
+});
+
 export const PartnerController = {
   createPartner,
   getAllPartners,
@@ -143,4 +126,5 @@ export const PartnerController = {
   updatePartner,
   softDeletePartner,
   deletePartner,
+  restorePartner,
 };
