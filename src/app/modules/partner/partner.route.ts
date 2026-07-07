@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post(
   "/create-partner",
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.MANAGER),
   multerUpload.single("logo"),          
   validateRequest(createPartnerZodSchema), 
   PartnerController.createPartner    
@@ -18,7 +18,7 @@ router.post(
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.MANAGER),
   multerUpload.single("logo"),
   validateRequest(updatePartnerZodSchema),
   PartnerController.updatePartner
@@ -26,21 +26,37 @@ router.patch(
 
 router.get(
     "/all-partners",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
+    checkAuth(...Object.values(Role)),
     PartnerController.getAllPartners
 );
 
 router.get(
+    "/all-trash-partners",
+    checkAuth(...Object.values(Role)),
+    PartnerController.getAllTrashPartners
+);
+
+router.get(
     "/:id",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.AGENT, Role.CUSTOMER),
+    checkAuth(...Object.values(Role)),
     PartnerController.getSinglePartner
 );
 
-
 router.patch(
     "/soft-delete/:id",
-    checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+    checkAuth(Role.SUPER_ADMIN, Role.MANAGER, Role.ADMIN),
     PartnerController.softDeletePartner
 );
 
+router.patch(
+    "/restore/:id",
+    checkAuth(Role.SUPER_ADMIN, Role.MANAGER, Role.ADMIN),
+    PartnerController.restorePartner
+);
+
+router.delete(
+    "/:id",
+    checkAuth(Role.SUPER_ADMIN, Role.MANAGER, Role.ADMIN),
+    PartnerController.deletePartner
+);
 export const PartnerRoutes = router;

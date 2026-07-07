@@ -1,81 +1,3 @@
-// import httpStatus from "http-status-codes";
-// import AppError from "../../errorHelpers/appError";
-// import { Partner } from "./partner.model";
-
-// const createPartner = async (
-//   payload: any,
-//   userId: string,
-// ) => {
-//   const exists = await Partner.findOne({
-//     name: payload.name,
-//     isDeleted: false,
-//   });
-
-//   if (exists) {
-//     throw new AppError(
-//       httpStatus.BAD_REQUEST,
-//       "Partner already exists",
-//     );
-//   }
-
-//   return await Partner.create({
-//     ...payload,
-//     createdBy: userId,
-//   });
-// };
-
-// const getAllPartners = async () => {
-//   return await Partner.find({
-//     isDeleted: false,
-//   });
-// };
-
-// const getSinglePartner = async (id: string) => {
-//   const partner = await Partner.findById(id);
-
-//   if (!partner) {
-//     throw new AppError(
-//       httpStatus.NOT_FOUND,
-//       "Partner not found",
-//     );
-//   }
-
-//   return partner;
-// };
-
-// const updatePartner = async (
-//   id: string,
-//   payload: any,
-// ) => {
-//   return await Partner.findByIdAndUpdate(
-//     id,
-//     payload,
-//     {
-//       new: true,
-//     },
-//   );
-// };
-
-// const softDeletePartner = async (id: string) => {
-//   return await Partner.findByIdAndUpdate(
-//     id,
-//     {
-//       isDeleted: true,
-//     },
-//     {
-//       new: true,
-//     },
-//   );
-// };
-
-// export const PartnerServices = {
-//   createPartner,
-//   getAllPartners,
-//   getSinglePartner,
-//   updatePartner,
-//   softDeletePartner,
-// };
-
 
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
@@ -159,8 +81,6 @@ const getPartnerStats = async (match: Record<string, any>) => {
 
   return agg[0] || { total: 0, active: 0, inactive: 0 };
 };
-
-
 
 // =============================================================
 // PARTNER SERVICES
@@ -262,7 +182,6 @@ const getAllTrashPartners = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
-
 const getSinglePartner = async (id: string) => {
   const partner = await Partner.findById(id)
     .populate("createdBy", "name phone role");
@@ -326,6 +245,22 @@ const deletePartner = async (id: string) => {
   return null
 };
 
+const restorePartner = async (id: string) => {
+  const partner = await Partner.findById(id);
+
+  if (!partner) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Partner not found",
+    );
+  }
+
+  return await Partner.findByIdAndUpdate(
+    id,
+    { isDeleted: false },
+    { new: true },
+  );
+};
 
 export const PartnerServices = {
   createPartner,
@@ -334,5 +269,6 @@ export const PartnerServices = {
   updatePartner,
   softDeletePartner,
   getAllTrashPartners,
-  deletePartner
+  deletePartner,  
+  restorePartner,
 };

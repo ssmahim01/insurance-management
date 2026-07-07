@@ -110,6 +110,17 @@ const getNearbyBranches = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const restorePartnerBranch = catchAsync(async (req: Request, res: Response) => {
+  const result = await BranchServices.restorePartnerBranch(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner branch restored successfully",
+    data: result,
+  });
+});
+
 export const BranchControllers = {
     createPartnerBranch,
     getAllPartnerBranches,
@@ -118,5 +129,6 @@ export const BranchControllers = {
     updatePartnerBranch,
     softDeletePartnerBranch,
     getNearbyBranches,
-    deletePartnerBranch
+    deletePartnerBranch,    
+    restorePartnerBranch
 };

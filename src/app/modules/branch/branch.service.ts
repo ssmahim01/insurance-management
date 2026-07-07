@@ -106,7 +106,6 @@ const getAllPartnerBranches = async (query: Record<string, string>) => {
     // =========================
     const baseFilter: any = { isDeleted: false, ...queryObj };
 
-    // partnerId দিয়ে specific partner এর branches filter করা যাবে
     if (query.partner) {
         baseFilter.partner = new Types.ObjectId(query.partner);
         delete query.partner;
@@ -172,7 +171,6 @@ const getAllTrashPartnerBranches = async (query: Record<string, string>) => {
     // =========================
     const baseFilter: any = { isDeleted: true, ...queryObj };
 
-    // partnerId দিয়ে specific partner এর branches filter করা যাবে
     if (query.partner) {
         baseFilter.partner = new Types.ObjectId(query.partner);
         delete query.partner;
@@ -287,6 +285,23 @@ const deletePartnerBranch = async (id: string) => {
     return null;
 };
 
+const restorePartnerBranch = async (id: string) => {
+  const branch = await PartnerBranch.findById(id);
+
+  if (!branch) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Branch not found",
+    );
+  }
+
+  return await PartnerBranch.findByIdAndUpdate(
+    id,
+    { isDeleted: false },
+    { new: true },
+  );
+};
+
 const getNearbyBranches = async ({
     latitude,
     longitude,
@@ -322,5 +337,6 @@ export const BranchServices = {
     softDeletePartnerBranch,
     updatePartnerBranch,
     deletePartnerBranch,
+    restorePartnerBranch,
     getNearbyBranches
 }
