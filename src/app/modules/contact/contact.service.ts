@@ -102,7 +102,7 @@ const markAsRead = async (id: string) => {
   const data = await Contact.findByIdAndUpdate(
     id,
     { isRead: true },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   return data;
@@ -112,7 +112,7 @@ const markAsReplied = async (id: string) => {
   const data = await Contact.findByIdAndUpdate(
     id,
     { isReplied: true },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   return data;
@@ -122,7 +122,7 @@ const softDeleteContact = async (id: string) => {
   const data = await Contact.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   return data;

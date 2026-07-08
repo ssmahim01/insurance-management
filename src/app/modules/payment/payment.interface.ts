@@ -23,6 +23,8 @@ export interface IPayment {
 
     status: PaymentStatus;
 
+    isDeleted: boolean;
+
     createdAt?: Date;
 
     updatedAt?: Date;

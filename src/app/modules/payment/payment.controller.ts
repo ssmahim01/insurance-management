@@ -12,7 +12,7 @@ const initPayment = catchAsync(
 
         const result =
             await PaymentService.initPayment(
-                req.params.enrollmentId as string
+                req.params.subscriptionId as string
             );
 
         sendResponse(res, {
@@ -69,7 +69,6 @@ const cancelPayment = catchAsync(
         }
     }
 );
-
 
 const getAllPayments = catchAsync(async (req: Request, res: Response) => {
     const result = await PaymentService.getAllPayments(
@@ -134,6 +133,32 @@ const deletePayment = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const getAllTrashPayments = catchAsync(async (req: Request, res: Response) => {
+    const result = await PaymentService.getAllTrashPayments(
+        req.query as Record<string, string>
+    );
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Trashed payments retrieved successfully",
+        data: result.data,
+        meta: result.meta,
+        stats: result.stats,
+    });
+});
+
+const restorePayment = catchAsync(async (req: Request, res: Response) => {
+    const result = await PaymentService.restorePayment(req.params.id as string);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Payment restored successfully",
+        data: result.data,
+    });
+});
+
 const validatePayment = catchAsync(
     async (req: Request, res: Response) => {
         console.log("sslcommerz ipn url body", req.body);
@@ -157,5 +182,7 @@ export const PaymentController = {
     getSinglePayment, 
     updatePayment,  
     softDeletePayment,   
-    deletePayment,     
+    deletePayment,   
+    getAllTrashPayments,
+    restorePayment,  
 };

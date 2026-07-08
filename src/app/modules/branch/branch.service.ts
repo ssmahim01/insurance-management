@@ -258,7 +258,7 @@ const updatePartnerBranch = async (
     return await PartnerBranch.findByIdAndUpdate(
         id,
         payload,
-        { new: true, runValidators: true },
+        { runValidators: true, returnDocument: "after" },
     );
 };
 
@@ -275,7 +275,7 @@ const softDeletePartnerBranch = async (id: string) => {
     return await PartnerBranch.findByIdAndUpdate(
         id,
         { isDeleted: true },
-        { new: true },
+        { returnDocument: "after" },
     );
 };
 
@@ -298,7 +298,7 @@ const restorePartnerBranch = async (id: string) => {
   return await PartnerBranch.findByIdAndUpdate(
     id,
     { isDeleted: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 };
 
