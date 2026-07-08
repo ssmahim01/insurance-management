@@ -220,7 +220,7 @@ const updateUser = async (
   }
 
   const updatedUser = await User.findByIdAndUpdate(userId, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   }).select("-password");
 
@@ -296,7 +296,7 @@ const restoreUser = async (id: string) => {
     id,
     { isDeleted: false },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   ).select("-password");
@@ -521,7 +521,7 @@ const updateProfile = async (
     decodedToken.userId,
     payload,
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );

@@ -35,6 +35,11 @@ const paymentSchema = new Schema<IPayment>(
             enum: Object.values(PaymentStatus),
             default: PaymentStatus.UNPAID,
         },
+
+        isDeleted: {
+            type: Boolean,
+            default: false
+        }
     },
     {
         timestamps: true,

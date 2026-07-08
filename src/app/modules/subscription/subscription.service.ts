@@ -943,7 +943,7 @@ const softDeleteSubscription = async (id: string) => {
   return await Subscription.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    { new: true },
+    {  returnDocument: "after"},
   );
 };
 
@@ -995,7 +995,7 @@ const updateSubscription = async (
   }
 
   const updated = await Subscription.findByIdAndUpdate(id, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   });
 
@@ -1013,7 +1013,7 @@ const restoreSubscription = async (id: string) => {
     id,
     { isDeleted: false },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );

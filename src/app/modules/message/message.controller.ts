@@ -24,7 +24,8 @@ const getAllMessages = async (req: Request, res: Response) => {
     statusCode: httpStatus.OK,
     success: true,
     message: "Messages retrieved successfully",
-    data: result,
+    data: result.data,
+    meta: result.meta,
   });
 };
 
@@ -67,10 +68,51 @@ const softDeleteMessage = async (req: Request, res: Response) => {
   });
 };
 
+// GET ALL TRASH
+const getAllTrashMessages = async (req: Request, res: Response) => {
+  const query = req.query;
+  const result = await MessageService.getAllTrashMessages(query as Record<string, string>);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Trashed messages retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+  });
+};
+
+// RESTORE
+const restoreMessage = async (req: Request, res: Response) => {
+  const result = await MessageService.restoreMessage(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Message restored successfully",
+    data: result,
+  });
+};
+
+// HARD DELETE
+const deleteMessage = async (req: Request, res: Response) => {
+  const result = await MessageService.deleteMessage(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Message permanently deleted",
+    data: result,
+  });
+};
+
 export const MessageController = {
   createMessage,
   getAllMessages,
   getSingleMessage,
   updateMessage,
   softDeleteMessage,
+  getAllTrashMessages,
+  restoreMessage,
+  deleteMessage,
 };

@@ -245,7 +245,7 @@ const updateClaim = async (id: string, payload: Partial<IClaim>) => {
   }
 
   return await Claim.findByIdAndUpdate(id, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   });
 };
@@ -322,7 +322,7 @@ const restoreClaim = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Claim not found");
   }
 
-  return await Claim.findByIdAndUpdate(id, { isDeleted: false }, { new: true });
+  return await Claim.findByIdAndUpdate(id, { isDeleted: false }, { returnDocument: "after" });
 };
 
 

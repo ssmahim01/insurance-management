@@ -17,6 +17,12 @@ router.get(
 );
 
 router.get(
+  "/all-trash-messages",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  MessageController.getAllTrashMessages
+);
+
+router.get(
   "/:id",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
   MessageController.getSingleMessage
@@ -28,10 +34,22 @@ router.patch(
   MessageController.updateMessage
 );
 
+router.patch(
+  "/restore/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  MessageController.restoreMessage
+);
+
 router.delete(
   "/:id",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
   MessageController.softDeleteMessage
+);
+
+router.delete(
+  "/permanent/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  MessageController.deleteMessage
 );
 
 export const messageRoutes = router;

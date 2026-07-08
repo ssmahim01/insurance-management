@@ -90,7 +90,6 @@ const successPayment = async (query: Record<string, string>) => {
 
         const startDate = new Date();
 
-        // LIFETIME plan এ endDate থাকে না
         const endDate =
             subscription.isLifetime || !subscription.durationInMonths
                 ? null
@@ -234,8 +233,8 @@ const updatePayment = async (id: string, payload: any) => {
                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
+                [PaymentStatus.REFUNDED]: SubscriptionStatus.CANCELLED,
             };
-
             const subscriptionStatus = statusMap[payload.status];
 
             if (subscriptionStatus) {
@@ -325,6 +324,57 @@ const buildPaymentQueryObj = (query: Record<string, string>) => {
     return { queryObj, startDateStr, endDateStr };
 };
 
+// const getPaymentStats = async (match: Record<string, any>) => {
+//     const agg = await PaymentModel.aggregate([
+//         { $match: match },
+//         {
+//             $group: {
+//                 _id: null,
+//                 total: { $sum: 1 },
+//                 completed: { $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] } },
+//                 pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
+//                 failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
+//                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },
+//                 totalRevenue: {
+//                     $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, "$amount", 0] },
+//                 },
+//             },
+//         },
+//     ]);
+
+//     return agg[0] || {
+//         total: 0, completed: 0, pending: 0,
+//         failed: 0, cancelled: 0, totalRevenue: 0,
+//     };
+// };
+
+// const getAllPayments = async (query: Record<string, string>) => {
+//     const { queryObj, startDateStr, endDateStr } =
+//         buildPaymentQueryObj(query);
+
+//     const baseQuery = PaymentModel.find(queryObj);
+//     const queryBuilder = new QueryBuilder(baseQuery, query);
+
+//     const data = await queryBuilder
+//         .search(paymentSearchableFields)
+//         .filter()
+//         .sort()
+//         .fields()
+//         .paginate()
+//         .build()
+//         .populate("subscription", "planType durationInMonths price status");
+
+//     const meta = await queryBuilder.getMeta();
+
+//     const statsMatch = buildPaymentDateFilter(startDateStr, endDateStr);
+//     const stats = await getPaymentStats(statsMatch);
+
+//     return { data, meta, stats };
+// };
+
+
+// getAllPayments
+
 const getPaymentStats = async (match: Record<string, any>) => {
     const agg = await PaymentModel.aggregate([
         { $match: match },
@@ -333,9 +383,10 @@ const getPaymentStats = async (match: Record<string, any>) => {
                 _id: null,
                 total: { $sum: 1 },
                 completed: { $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] } },
-                pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
+                unpaid: { $sum: { $cond: [{ $eq: ["$status", "UNPAID"] }, 1, 0] } },
                 failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },
+                refunded: { $sum: { $cond: [{ $eq: ["$status", "REFUNDED"] }, 1, 0] } },
                 totalRevenue: {
                     $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, "$amount", 0] },
                 },
@@ -344,8 +395,8 @@ const getPaymentStats = async (match: Record<string, any>) => {
     ]);
 
     return agg[0] || {
-        total: 0, completed: 0, pending: 0,
-        failed: 0, cancelled: 0, totalRevenue: 0,
+        total: 0, completed: 0, unpaid: 0,
+        failed: 0, cancelled: 0, refunded: 0, totalRevenue: 0,
     };
 };
 
@@ -353,7 +404,7 @@ const getAllPayments = async (query: Record<string, string>) => {
     const { queryObj, startDateStr, endDateStr } =
         buildPaymentQueryObj(query);
 
-    const baseQuery = PaymentModel.find(queryObj);
+    const baseQuery = PaymentModel.find({ isDeleted: false, ...queryObj });
     const queryBuilder = new QueryBuilder(baseQuery, query);
 
     const data = await queryBuilder
@@ -367,10 +418,56 @@ const getAllPayments = async (query: Record<string, string>) => {
 
     const meta = await queryBuilder.getMeta();
 
-    const statsMatch = buildPaymentDateFilter(startDateStr, endDateStr);
+    const statsMatch = { isDeleted: false, ...buildPaymentDateFilter(startDateStr, endDateStr) };
     const stats = await getPaymentStats(statsMatch);
 
     return { data, meta, stats };
+};
+
+// =============================================================
+// GET ALL TRASH PAYMENTS
+// =============================================================
+const getAllTrashPayments = async (query: Record<string, string>) => {
+    const { queryObj, startDateStr, endDateStr } =
+        buildPaymentQueryObj(query);
+
+    const baseQuery = PaymentModel.find({ isDeleted: true, ...queryObj });
+    const queryBuilder = new QueryBuilder(baseQuery, query);
+
+    const data = await queryBuilder
+        .search(paymentSearchableFields)
+        .filter()
+        .sort()
+        .fields()
+        .paginate()
+        .build()
+        .populate("subscription", "planType durationInMonths price status");
+
+    const meta = await queryBuilder.getMeta();
+
+    const statsMatch = { isDeleted: false, ...buildPaymentDateFilter(startDateStr, endDateStr) };
+    const stats = await getPaymentStats(statsMatch);
+
+    return { data, meta, stats };
+};
+
+// =============================================================
+// RESTORE PAYMENT
+// =============================================================
+const restorePayment = async (id: string) => {
+    const payment = await PaymentModel.findById(id);
+
+    if (!payment) {
+        throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+    }
+
+    const result = await PaymentModel.findByIdAndUpdate(
+        id,
+        { isDeleted: false },
+        { returnDocument: "after" },
+    );
+
+    return { data: result };
 };
 
 const getSinglePayment = async (id: string) => {
@@ -385,6 +482,11 @@ const getSinglePayment = async (id: string) => {
 };
 
 const softDeletePayment = async (id: string) => {
+    const payment = await PaymentModel.findById(id);
+
+    if (!payment) {
+        throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+    }
     await PaymentModel.findByIdAndUpdate(
         id,
         {
@@ -411,4 +513,6 @@ export const PaymentService = {
     getSinglePayment,
     softDeletePayment,
     deletePayment,
+    getAllTrashPayments,
+    restorePayment,
 };

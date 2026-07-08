@@ -212,7 +212,7 @@ const updatePartner = async (
   return await Partner.findByIdAndUpdate(
     id,
     payload,
-    { new: true, runValidators: true },
+    { runValidators: true, returnDocument: "after" },
   );
 };
 
@@ -235,7 +235,7 @@ const softDeletePartner = async (id: string) => {
   return await Partner.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    { new: true },
+    { returnDocument: "after" },
   );
 };
 
@@ -258,7 +258,7 @@ const restorePartner = async (id: string) => {
   return await Partner.findByIdAndUpdate(
     id,
     { isDeleted: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 };
 

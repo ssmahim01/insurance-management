@@ -72,10 +72,57 @@ const softDeleteNotification = catchAsync(async (req: Request, res: Response) =>
   });
 });
 
+const getAllTrashNotifications = catchAsync(
+  async (req: Request, res: Response) => {
+    const result =
+      await NotificationService.getAllTrashNotifications({
+        query: req.query as Record<string, string>,
+        user: {
+          userId: (req.user as any).userId,
+          role: (req.user as any).role,
+        },
+      });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Trashed notifications retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
+    });
+  },
+);
+
+const restoreNotification = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.restoreNotification(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Notification restored successfully",
+    data: result,
+  });
+});
+
+const deleteNotification = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.deleteNotification(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Notification permanently deleted",
+    data: result,
+  });
+});
+
 export const NotificationController = {
   createNotification,
   getAllNotifications,
   getSingleNotification,
   markAsRead,
   softDeleteNotification,
+  getAllTrashNotifications,
+  restoreNotification,
+  deleteNotification,
 };

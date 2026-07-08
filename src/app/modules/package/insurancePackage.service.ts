@@ -356,7 +356,7 @@ const updatePackage = async (
   return await InsurancePackage.findByIdAndUpdate(
     id,
     payload,
-    { new: true, runValidators: true },
+    {  runValidators: true, returnDocument: "after" },
   );
 };
 
@@ -370,7 +370,7 @@ const softDeletePackage = async (id: string) => {
   return await InsurancePackage.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    { new: true },
+    { returnDocument: "after" },
   );
 };
 
