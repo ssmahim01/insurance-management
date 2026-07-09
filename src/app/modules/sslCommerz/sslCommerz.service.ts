@@ -69,8 +69,71 @@ const validatePayment = async (payload: any) => {
     }
 }
 
+// =============================================================
+// REFUND INITIATE
+// =============================================================
+const initiateRefund = async (payload: {
+    bank_tran_id: string;
+    refund_amount: number;
+    refund_remarks?: string;
+}) => {
+    try {
+        const response = await axios({
+            method: "GET",
+            url: envVars.SSL.SSL_REFUND_API,
+            params: {
+                bank_tran_id: payload.bank_tran_id,
+                refund_amount: payload.refund_amount,
+                refund_remarks: payload.refund_remarks || "Refund processed by admin",
+                refund_e_gw: "",
+                format: "json",
+                store_id: envVars.SSL.SSL_STORE_ID,
+                store_passwd: envVars.SSL.SSL_STORE_PASS,
+            },
+        });
+
+        return response.data;
+        // SSLCommerz returns e.g.
+        // { status: "success" | "processing" | "failed", refund_ref_id, errorReason, ... }
+    } catch (error: any) {
+        console.log("Refund initiation error occurred");
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Refund Initiation Error, ${error.message}`
+        );
+    }
+};
+
+// =============================================================
+// REFUND STATUS QUERY (SSLCommerz refunds can be async — "processing")
+// =============================================================
+const queryRefundStatus = async (refundRefId: string) => {
+    try {
+        const response = await axios({
+            method: "GET",
+            url: envVars.SSL.SSL_REFUND_QUERY_API,
+            params: {
+                refund_ref_id: refundRefId,
+                store_id: envVars.SSL.SSL_STORE_ID,
+                store_passwd: envVars.SSL.SSL_STORE_PASS,
+                format: "json",
+            },
+        });
+
+        return response.data;
+    } catch (error: any) {
+        console.log("Refund query error occurred");
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Refund Query Error, ${error.message}`
+        );
+    }
+};
+
 export const SSLCommerzService = {
     sslPaymentInit,
-    validatePayment
-}
+    validatePayment,
+    initiateRefund,
+    queryRefundStatus,
+};
 
