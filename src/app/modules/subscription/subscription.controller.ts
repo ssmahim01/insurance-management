@@ -4,128 +4,127 @@ import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { SubscriptionServices } from "./subscription.service";
 
-const createSubscription = catchAsync(
-    async (req: Request, res: Response) => {
-        const userId = (req as any).user.userId;
+const createSubscription = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+  const role = (req as any).user.role;
 
-        const result =
-            await SubscriptionServices.createSubscription(
-                req.body,
-                userId,
-            );
+  const result = await SubscriptionServices.createSubscription(
+    req.body,
+    userId,
+    role,
+  );
 
-        sendResponse(res, {
-            statusCode: httpStatus.CREATED,
-            success: true,
-            message: "Subscription created successfully",
-            data: result,
-        });
-    },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Subscription created successfully",
+    data: result,
+  });
+});
 
-const getAllSubscriptions = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
+const getAllSubscriptions = catchAsync(async (req: Request, res: Response) => {
+  const query = req.query;
 
-        const result = await SubscriptionServices.getAllSubscriptions(query as Record<string, string>);
+  const result = await SubscriptionServices.getAllSubscriptions(
+    query as Record<string, string>,
+  );
 
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "All subscriptions retrieved successfully",
-            data: result,
-        });
-    },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "All subscriptions retrieved successfully",
+    data: result,
+  });
+});
 
 const getAgentsAllSubscriptions = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
-        const userId = req.params.id as string;
-
-        const result = await SubscriptionServices.getAllSubscriptionsByAgent({
-            query: query as Record<string, string>,
-            userId,
-        });
-
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "All subscriptions retrieved successfully",
-            data: result,
-        });
-    },
-);
-
-const getAgentLeaderSubscriptions = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
-        const userId = (req as any).user.userId;
-
-        const result =
-            await SubscriptionServices.getAgentLeaderSubscriptions({
-                query: query as Record<string, string>,
-                userId,
-            });
-
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "Agent leader team subscriptions retrieved successfully",
-            data: result,
-        });
-    },
-);
-
-const getMyTrashSubscriptions = catchAsync(async (req: Request, res: Response) => {
-  const query = req.query;
-  const userId = req.user?.userId;
-
-  const result = await SubscriptionServices.getMyTrashSubscriptions({
-    query: query as Record<string, string>,
-    userId,
-  });
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "My trash subscriptions retrieved successfully",
-    data: result,
-  });
-});
-
-const getAgentLeaderTrashSubscriptions = catchAsync(async (req: Request, res: Response) => {
-  const query = req.query;
-  const userId = req.user?.userId;
-
-  const result = await SubscriptionServices.getAgentLeaderTrashSubscriptions({
-    query: query as Record<string, string>,
-    userId,
-  });
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Agent leader trash subscriptions retrieved successfully",
-    data: result,
-  });
-});
-
-const restoreSubscription = catchAsync(
   async (req: Request, res: Response) => {
-    const result =
-      await SubscriptionServices.restoreSubscription(
-        req.params.id as string,
-      );
+    const query = req.query;
+    const userId = req.params.id as string;
+
+    const result = await SubscriptionServices.getAllSubscriptionsByAgent({
+      query: query as Record<string, string>,
+      userId,
+    });
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
-      message: "Subscription restored successfully",
+      message: "All subscriptions retrieved successfully",
       data: result,
     });
   },
 );
+
+const getAgentLeaderSubscriptions = catchAsync(
+  async (req: Request, res: Response) => {
+    const query = req.query;
+    const userId = (req as any).user.userId;
+
+    const result = await SubscriptionServices.getAgentLeaderSubscriptions({
+      query: query as Record<string, string>,
+      userId,
+    });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Agent leader team subscriptions retrieved successfully",
+      data: result,
+    });
+  },
+);
+
+const getMyTrashSubscriptions = catchAsync(
+  async (req: Request, res: Response) => {
+    const query = req.query;
+    const userId = req.user?.userId;
+
+    const result = await SubscriptionServices.getMyTrashSubscriptions({
+      query: query as Record<string, string>,
+      userId,
+    });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "My trash subscriptions retrieved successfully",
+      data: result,
+    });
+  },
+);
+
+const getAgentLeaderTrashSubscriptions = catchAsync(
+  async (req: Request, res: Response) => {
+    const query = req.query;
+    const userId = req.user?.userId;
+
+    const result = await SubscriptionServices.getAgentLeaderTrashSubscriptions({
+      query: query as Record<string, string>,
+      userId,
+    });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Agent leader trash subscriptions retrieved successfully",
+      data: result,
+    });
+  },
+);
+
+const restoreSubscription = catchAsync(async (req: Request, res: Response) => {
+  const result = await SubscriptionServices.restoreSubscription(
+    req.params.id as string,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Subscription restored successfully",
+    data: result,
+  });
+});
 
 const permanentDeleteSubscription = catchAsync(
   async (req: Request, res: Response) => {
@@ -147,11 +146,10 @@ const getAgentLeaderSubscriptionsByAdmin = catchAsync(
     const query = req.query;
     const leaderId = req.params.id as string;
 
-    const result =
-      await SubscriptionServices.getAgentLeaderSubscriptions({
-        query: query as Record<string, string>,
-        userId: leaderId,
-      });
+    const result = await SubscriptionServices.getAgentLeaderSubscriptions({
+      query: query as Record<string, string>,
+      userId: leaderId,
+    });
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -162,88 +160,83 @@ const getAgentLeaderSubscriptionsByAdmin = catchAsync(
   },
 );
 
-const getMySubscriptions = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
-        const userId = req?.user?.userId;
+const getMySubscriptions = catchAsync(async (req: Request, res: Response) => {
+  const query = req.query;
+  const userId = req?.user?.userId;
 
-        const result = await SubscriptionServices.getMySubscriptions({
-            query: query as Record<string, string>,
-            userId,
-        });
+  const result = await SubscriptionServices.getMySubscriptions({
+    query: query as Record<string, string>,
+    userId,
+  });
 
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "My all subscriptions retrieved successfully",
-            data: result,
-        });
-    },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "My all subscriptions retrieved successfully",
+    data: result,
+  });
+});
 
 const getAllTrashSubscriptions = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
+  async (req: Request, res: Response) => {
+    const query = req.query;
 
-        const result = await SubscriptionServices.getAllTrashSubscriptions(query as Record<string, string>);
+    const result = await SubscriptionServices.getAllTrashSubscriptions(
+      query as Record<string, string>,
+    );
 
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "All trash subscriptions retrieved successfully",
-            data: result,
-        });
-    },
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "All trash subscriptions retrieved successfully",
+      data: result,
+    });
+  },
 );
 
 const getSingleSubscription = catchAsync(
-    async (req: Request, res: Response) => {
-        const result =
-            await SubscriptionServices.getSingleSubscription(
-                req.params.id as string,
-            );
+  async (req: Request, res: Response) => {
+    const result = await SubscriptionServices.getSingleSubscription(
+      req.params.id as string,
+    );
 
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "Subscription retrieved successfully",
-            data: result,
-        });
-    },
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Subscription retrieved successfully",
+      data: result,
+    });
+  },
 );
 
 const softDeleteSubscription = catchAsync(
-    async (req: Request, res: Response) => {
-        const result =
-            await SubscriptionServices.softDeleteSubscription(
-                req.params.id as string,
-            );
+  async (req: Request, res: Response) => {
+    const result = await SubscriptionServices.softDeleteSubscription(
+      req.params.id as string,
+    );
 
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "Subscription deleted successfully",
-            data: result,
-        });
-    },
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Subscription deleted successfully",
+      data: result,
+    });
+  },
 );
 
-const updateSubscription = catchAsync(
-    async (req: Request, res: Response) => {
-        const result =
-            await SubscriptionServices.updateSubscription(
-                req.params.id as string,
-                req.body,
-            );
+const updateSubscription = catchAsync(async (req: Request, res: Response) => {
+  const result = await SubscriptionServices.updateSubscription(
+    req.params.id as string,
+    req.body,
+  );
 
-        sendResponse(res, {
-            statusCode: httpStatus.OK,
-            success: true,
-            message: "Subscription updated successfully",
-            data: result,
-        });
-    },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Subscription updated successfully",
+    data: result,
+  });
+});
 
 const getCustomerSubscriptions = catchAsync(
   async (req: Request, res: Response) => {
@@ -267,19 +260,19 @@ const getCustomerSubscriptions = catchAsync(
 );
 
 export const SubscriptionControllers = {
-    createSubscription,
-    getSingleSubscription,
-    softDeleteSubscription,
-    updateSubscription,
-    getAllSubscriptions,
-    getAllTrashSubscriptions,
-    getAgentsAllSubscriptions,
-    getMySubscriptions,
-    getMyTrashSubscriptions,
-    permanentDeleteSubscription,
-    restoreSubscription,
-    getAgentLeaderSubscriptions,
-    getAgentLeaderTrashSubscriptions,
-    getAgentLeaderSubscriptionsByAdmin,
-    getCustomerSubscriptions
+  createSubscription,
+  getSingleSubscription,
+  softDeleteSubscription,
+  updateSubscription,
+  getAllSubscriptions,
+  getAllTrashSubscriptions,
+  getAgentsAllSubscriptions,
+  getMySubscriptions,
+  getMyTrashSubscriptions,
+  permanentDeleteSubscription,
+  restoreSubscription,
+  getAgentLeaderSubscriptions,
+  getAgentLeaderTrashSubscriptions,
+  getAgentLeaderSubscriptionsByAdmin,
+  getCustomerSubscriptions,
 };

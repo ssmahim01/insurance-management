@@ -29,49 +29,67 @@ const createSubscription = async (
     };
   },
   userId: string,
+  role: Role
 ) => {
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    let customerId: Types.ObjectId;
-    let customer;
+   let customerId: Types.ObjectId;
+let customer;
 
-    // Customer Resolve
-    if (payload.customer) {
-      const existingCustomer = await User.findById(payload.customer);
+// Customer purchasing for himself
+if (role === Role.CUSTOMER) {
+  const existingCustomer = await User.findById(userId);
 
-      if (!existingCustomer) {
-        throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
-      }
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+  }
 
-      customerId = existingCustomer._id;
-      customer = existingCustomer;
-    } else if (payload.customerPayload) {
-      const existingCustomer = await User.findOne({
-        phone: payload.customerPayload.phone,
-      });
+  customerId = existingCustomer._id;
+  customer = existingCustomer;
+}
 
-      if (existingCustomer) {
-        customerId = existingCustomer._id;
-        customer = existingCustomer;
-      } else {
-        const createdCustomer = await UserServices.createUserService({
-          ...payload.customerPayload,
-          role: Role.CUSTOMER,
-          createdBy: new Types.ObjectId(userId),
-        });
+// Staff selecting existing customer
+else if (payload.customer) {
+  const existingCustomer = await User.findById(payload.customer);
 
-        customerId = createdCustomer._id as Types.ObjectId;
-        customer = createdCustomer;
-      }
-    } else {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "Customer information is required",
-      );
-    }
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+  }
+
+  customerId = existingCustomer._id;
+  customer = existingCustomer;
+}
+
+// Staff creating new customer
+else if (payload.customerPayload) {
+  const existingCustomer = await User.findOne({
+    phone: payload.customerPayload.phone,
+  });
+
+  if (existingCustomer) {
+    customerId = existingCustomer._id;
+    customer = existingCustomer;
+  } else {
+    const createdCustomer = await UserServices.createUserService({
+      ...payload.customerPayload,
+      role: Role.CUSTOMER,
+      createdBy: new Types.ObjectId(userId),
+    });
+
+    customerId = createdCustomer._id as Types.ObjectId;
+    customer = createdCustomer;
+  }
+}
+
+else {
+  throw new AppError(
+    httpStatus.BAD_REQUEST,
+    "Customer information is required",
+  );
+}
 
     // Subscribe-for / beneficiary validation
     const subscribeFor = payload.subscribeFor ?? SubscribeFor.SELF;
