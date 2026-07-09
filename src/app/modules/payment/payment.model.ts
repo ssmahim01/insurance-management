@@ -1,5 +1,5 @@
 
-import { model, Schema } from "mongoose";
+import mongoose, { model, Schema } from "mongoose";
 import { IPayment, PaymentStatus } from "./payment.interface";
 
 const paymentSchema = new Schema<IPayment>(
@@ -39,7 +39,10 @@ const paymentSchema = new Schema<IPayment>(
         isDeleted: {
             type: Boolean,
             default: false
-        }
+        },
+        refundData: { type: mongoose.Schema.Types.Mixed },
+        refundRefId: { type: String },
+        refundedAt: { type: Date },
     },
     {
         timestamps: true,

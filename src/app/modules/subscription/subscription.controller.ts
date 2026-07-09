@@ -245,6 +245,27 @@ const updateSubscription = catchAsync(
     },
 );
 
+const getCustomerSubscriptions = catchAsync(
+  async (req: Request, res: Response) => {
+    const customerId = req.params.customerId as string;
+    const requesterId = (req as any).user.userId;
+    const requesterRole = (req as any).user.role;
+
+    const result = await SubscriptionServices.getCustomerSubscriptions({
+      customerId,
+      requesterId,
+      requesterRole,
+    });
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Customer subscriptions retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 export const SubscriptionControllers = {
     createSubscription,
     getSingleSubscription,
@@ -259,5 +280,6 @@ export const SubscriptionControllers = {
     restoreSubscription,
     getAgentLeaderSubscriptions,
     getAgentLeaderTrashSubscriptions,
-    getAgentLeaderSubscriptionsByAdmin
+    getAgentLeaderSubscriptionsByAdmin,
+    getCustomerSubscriptions
 };

@@ -21,6 +21,12 @@ router.get(
 );
 
 router.get(
+  "/customer/:customerId",
+  checkAuth(...Object.values(Role)),
+  SubscriptionControllers.getCustomerSubscriptions,
+);
+
+router.get(
   "/agents-all-subscriptions/:id",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
   SubscriptionControllers.getAgentsAllSubscriptions,

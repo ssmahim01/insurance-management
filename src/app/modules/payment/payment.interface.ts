@@ -24,6 +24,9 @@ export interface IPayment {
     status: PaymentStatus;
 
     isDeleted: boolean;
+    refundData?: any,
+    refundRefId?: string,
+    refundedAt?: string,
 
     createdAt?: Date;
 

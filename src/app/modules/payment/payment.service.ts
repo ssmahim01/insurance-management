@@ -213,7 +213,97 @@ const cancelPayment = async (query: Record<string, string>) => {
     }
 };
 
+// const updatePayment = async (id: string, payload: any) => {
+//     const session = await mongoose.startSession();
+
+//     try {
+//         session.startTransaction();
+
+//         const updatedPayment = await PaymentModel.findByIdAndUpdate(
+//             id,
+//             payload,
+//             { returnDocument: "after", runValidators: true, session }
+//         );
+//         if (!updatedPayment) {
+//             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+//         }
+
+//         if (payload.status) {
+//             const statusMap: Record<string, string> = {
+//                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
+//                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
+//                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
+//                 [PaymentStatus.REFUNDED]: SubscriptionStatus.CANCELLED,
+//             };
+//             const subscriptionStatus = statusMap[payload.status];
+
+//             if (subscriptionStatus) {
+//                 await Subscription.findByIdAndUpdate(
+//                     updatedPayment.subscription,
+//                     { status: subscriptionStatus },
+//                     { session }
+//                 );
+//             }
+//         }
+
+//         await session.commitTransaction();
+//         return { data: updatedPayment };
+
+//     } catch (error) {
+//         await session.abortTransaction();
+//         throw error;
+//     } finally {
+//         session.endSession();
+//     }
+// };
+
 const updatePayment = async (id: string, payload: any) => {
+    const existingPayment = await PaymentModel.findById(id);
+
+    if (!existingPayment) {
+        throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+    }
+
+    // Trigger the actual SSLCommerz refund BEFORE any DB write.
+    // We only mark our DB as REFUNDED once the gateway confirms it.
+    if (
+        payload.status === PaymentStatus.REFUNDED &&
+        existingPayment.status !== PaymentStatus.REFUNDED
+    ) {
+        const bankTranId = (existingPayment as any).paymentGatewayData?.bank_tran_id;
+
+        if (!bankTranId) {
+            throw new AppError(
+                httpStatus.BAD_REQUEST,
+                "Cannot refund: bank transaction id not found. This payment may not have been validated by SSLCommerz yet."
+            );
+        }
+
+        const refundResponse = await SSLCommerzService.initiateRefund({
+            bank_tran_id: bankTranId,
+            refund_amount: existingPayment.amount,
+            refund_remarks: payload.refundRemarks || "Refund processed by admin",
+        });
+
+        // SSLCommerz replies "success" (instant) or "processing" (queued, poll later)
+        if (
+            refundResponse.status !== "success" &&
+            refundResponse.status !== "processing"
+        ) {
+            throw new AppError(
+                httpStatus.BAD_REQUEST,
+                `SSLCommerz refund failed: ${
+                    refundResponse.errorReason || refundResponse.status || "unknown error"
+                }`
+            );
+        }
+
+        // stash the gateway's refund response on the payment doc
+        payload.refundData = refundResponse;
+        payload.refundRefId = refundResponse.refund_ref_id;
+        payload.refundedAt = new Date();
+    }
+
     const session = await mongoose.startSession();
 
     try {
@@ -400,21 +490,105 @@ const getPaymentStats = async (match: Record<string, any>) => {
     };
 };
 
+// const getAllPayments = async (query: Record<string, string>) => {
+//     const { queryObj, startDateStr, endDateStr } =
+//         buildPaymentQueryObj(query);
+
+//     const baseQuery = PaymentModel.find({ isDeleted: false, ...queryObj });
+//     const queryBuilder = new QueryBuilder(baseQuery, query);
+
+//     const data = await queryBuilder
+//         .search(paymentSearchableFields)
+//         .filter()
+//         .sort()
+//         .fields()
+//         .paginate()
+//         .build()
+//         // .populate("subscription", "planType durationInMonths price status c");
+//         .populate({
+//             path: "subscription",
+//             select: "planType durationInMonths price status customer",
+//             populate: {
+//                 path: "customer",
+//                 select: "name phone",
+//             },
+//         });
+
+//     const meta = await queryBuilder.getMeta();
+
+//     const statsMatch = { isDeleted: false, ...buildPaymentDateFilter(startDateStr, endDateStr) };
+//     const stats = await getPaymentStats(statsMatch);
+
+//     return { data, meta, stats };
+// };
+
+
+
+const buildCustomerSubscriptionFilter = async (searchTerm: string | undefined) => {
+    if (!searchTerm) return null;
+
+    // 1. Find matching users by name or phone
+    const matchingUsers = await User.find({
+        $or: [
+            { name: { $regex: searchTerm, $options: "i" } },
+            { phone: { $regex: searchTerm, $options: "i" } },
+        ],
+    }).select("_id");
+
+    if (matchingUsers.length === 0) return { subscription: { $in: [] } }; 
+    // empty array -> intentionally guarantees no false-positive match later
+
+    const userIds = matchingUsers.map((u) => u._id);
+
+    // 2. Find subscriptions belonging to those users
+    const matchingSubscriptions = await Subscription.find({
+        customer: { $in: userIds },
+    }).select("_id");
+
+    const subscriptionIds = matchingSubscriptions.map((s) => s._id);
+
+    return { subscription: { $in: subscriptionIds } };
+};
+
 const getAllPayments = async (query: Record<string, string>) => {
+    const searchTerm = query.searchTerm;
+
     const { queryObj, startDateStr, endDateStr } =
         buildPaymentQueryObj(query);
 
-    const baseQuery = PaymentModel.find({ isDeleted: false, ...queryObj });
+    const customerFilter = await buildCustomerSubscriptionFilter(searchTerm);
+
+    const finalFilter: any = { isDeleted: false, ...queryObj };
+
+    if (customerFilter && searchTerm) {
+        // combine transactionId/status search (handled by QueryBuilder.search)
+        // with customer-name/phone based subscription match
+        finalFilter.$or = [
+            { transactionId: { $regex: searchTerm, $options: "i" } },
+            customerFilter,
+        ];
+
+        // remove searchTerm so QueryBuilder doesn't re-apply its own narrower search
+        delete query.searchTerm;
+    }
+
+    const baseQuery = PaymentModel.find(finalFilter);
     const queryBuilder = new QueryBuilder(baseQuery, query);
 
     const data = await queryBuilder
-        .search(paymentSearchableFields)
         .filter()
         .sort()
         .fields()
         .paginate()
         .build()
-        .populate("subscription", "planType durationInMonths price status");
+        .populate({
+            path: "subscription",
+            select: "planType durationInMonths price status customer",
+            populate: {
+                path: "customer",
+                select: "name phone",
+            },
+        });
 
     const meta = await queryBuilder.getMeta();
 
@@ -423,6 +597,7 @@ const getAllPayments = async (query: Record<string, string>) => {
 
     return { data, meta, stats };
 };
+
 
 // =============================================================
 // GET ALL TRASH PAYMENTS

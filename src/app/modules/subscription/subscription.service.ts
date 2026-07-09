@@ -943,7 +943,7 @@ const softDeleteSubscription = async (id: string) => {
   return await Subscription.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    {  returnDocument: "after"},
+    { returnDocument: "after" },
   );
 };
 
@@ -1019,6 +1019,35 @@ const restoreSubscription = async (id: string) => {
   );
 };
 
+const getCustomerSubscriptions = async ({
+  customerId,
+  requesterId,
+  requesterRole,
+}: {
+  customerId: string;
+  requesterId: string;
+  requesterRole: Role;
+}) => {
+  const filter: Record<string, any> = {
+    customer: customerId,
+    isDeleted: false,
+  };
+
+  // Admin/SuperAdmin can see ALL subscriptions of this customer.
+  // Everyone else only sees subscriptions THEY created for this customer.
+  if (![Role.SUPER_ADMIN, Role.ADMIN].includes(requesterRole)) {
+    filter.createdBy = requesterId;
+  }
+
+  const subscriptions = await Subscription.find(filter)
+   .populate("customer", "name phone")
+    .populate("package", "name slug description coverageAmount")
+    .populate("createdBy", "name phone role")
+    .sort({ createdAt: -1 });
+
+  return subscriptions;
+};
+
 export const SubscriptionServices = {
   createSubscription,
   getAllSubscriptions,
@@ -1033,4 +1062,5 @@ export const SubscriptionServices = {
   getAgentLeaderTrashSubscriptions,
   getMySubscriptions,
   getMyTrashSubscriptions,
+  getCustomerSubscriptions
 };
