@@ -19,9 +19,6 @@ const nomineeSchema = z.object({
   relationship: z.string().optional(),
   phone: z
     .string()
-    .regex(bdPhoneRegex, {
-      message: "Invalid nominee phone number",
-    })
     .optional(),
 });
 
@@ -72,7 +69,7 @@ export const updateUserZodSchema = z.object({
 
   phone: z.string().regex(bdPhoneRegex).optional(),
 
-  password: z.string().min(8).optional(),
+  password: z.string().optional(),
 
   role: z
     .enum([

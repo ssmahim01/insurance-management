@@ -56,7 +56,7 @@ router.post(
 
 router.post(
   "/admin/change-password",
-  checkAuth(Role.SUPER_ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   AuthControllers.adminChangePassword,
 );
 
