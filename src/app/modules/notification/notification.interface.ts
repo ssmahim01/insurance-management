@@ -1,3 +1,4 @@
+// Backend notification interface 
 import { Types } from "mongoose";
 
 export enum NotificationType {
@@ -7,6 +8,7 @@ export enum NotificationType {
   SUBSCRIPTION_EXPIRING = "SUBSCRIPTION_EXPIRING",
   SUBSCRIPTION_EXPIRED = "SUBSCRIPTION_EXPIRED",
   GENERAL = "GENERAL",
+  CLAIM = "CLAIM",
 }
 
 export interface INotification {

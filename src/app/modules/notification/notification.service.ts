@@ -79,6 +79,12 @@ const getAllNotifications = async ({
     delete query.isRead;
   }
 
+  // type filter
+  if (query.type !== undefined) {
+    baseFilter.type = query.type;
+    delete query.type;
+  }
+
   // ===================================
   // USER / PHONE FILTER (admin only)
   // Admin can filter by a specific
@@ -257,6 +263,12 @@ const getAllTrashNotifications = async ({
   if (query.isRead !== undefined) {
     baseFilter.isRead = query.isRead === "true";
     delete query.isRead;
+  }
+
+  // type filter
+  if (query.type !== undefined) {
+    baseFilter.type = query.type;
+    delete query.type;
   }
 
   if (isAdminLevel) {
