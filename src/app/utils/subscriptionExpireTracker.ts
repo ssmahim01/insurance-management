@@ -5,6 +5,7 @@ import { SubscriptionStatus } from "../modules/subscription/subscription.interfa
 import { Notification } from "../modules/notification/notification.model";
 import { NotificationType } from "../modules/notification/notification.interface";
 import { sendSMS } from "../utils/sendSms";
+import { MessageType } from "../modules/message/message.interface";
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,8 @@ const sendExpiryReminders = async (daysAhead: number) => {
 
   await Promise.allSettled(
     pending.map((sub) =>
-      sendSMS((sub.customer as any).phone, message),
+      sendSMS((sub.customer as any).phone, message, MessageType.SUBSCRIPTION),
+
     ),
   );
 
@@ -146,7 +148,7 @@ const processExpiredSubscriptions = async () => {
 
   await Promise.allSettled(
     expiredSubscriptions.map((sub) =>
-      sendSMS((sub.customer as any).phone, message),
+      sendSMS((sub.customer as any).phone, message, MessageType.SUBSCRIPTION),
     ),
   );
 

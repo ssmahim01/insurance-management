@@ -20,6 +20,7 @@ import {
   deleteOTP,
 } from "../../utils/otpRedis";
 import { sendSMS } from "../../utils/sendSms";
+import { MessageType } from "../message/message.interface";
 
 const staffLogin = async (
   phone: string,
@@ -96,7 +97,8 @@ const sendOtp = async (phone: string) => {
 
   await sendSMS(
     phone,
-    `Your OTP is ${otp}`
+    `Your OTP is ${otp}`,
+    MessageType.OTP
   );
 
   return null;

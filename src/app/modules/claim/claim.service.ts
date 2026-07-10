@@ -292,7 +292,7 @@ const reviewClaim = async (
     user:    customer._id,
     title:   notificationTitle,
     message: notificationMessage,
-    type:    NotificationType.GENERAL,
+    type:    NotificationType.CLAIM,
   });
 
   return updated;

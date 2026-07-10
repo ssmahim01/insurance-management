@@ -26,6 +26,7 @@ const getAllMessages = async (req: Request, res: Response) => {
     message: "Messages retrieved successfully",
     data: result.data,
     meta: result.meta,
+    stats: result.stats
   });
 };
 
@@ -79,6 +80,7 @@ const getAllTrashMessages = async (req: Request, res: Response) => {
     message: "Trashed messages retrieved successfully",
     data: result.data,
     meta: result.meta,
+    stats: result.stats,
   });
 };
 
