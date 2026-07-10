@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -160,6 +159,39 @@ const getAllUsers = catchAsync(
     });
   },
 );
+
+const getMyCustomersByLeader = catchAsync(async (req, res) => {
+  const result = await UserServices.getMyCustomersByLeader({
+    query: req.query as Record<string, string>,
+    userId: req.user.userId,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Customers retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+const getMyTrashCustomers = catchAsync(async (req, res) => {
+  const result = await UserServices.getMyTrashCustomers({
+    query: req.query as Record<string, string>,
+    userId: req.user.userId,
+    role: req.user.role,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Trash customers retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
 
 const getAllTrashUsers = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -348,7 +380,6 @@ const getAllTrashAdmins = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 // Admin / Super Admin — retrieve all managers
 const getAllManagers = catchAsync(async (req: Request, res: Response) => {
   const result = await UserServices.getAllManagers(
@@ -517,6 +548,8 @@ export const UserControllers = {
   getMyAgentLeaderCustomers,
   getAgentLeaderCustomersByAdmin,
   getMyTrashAgents,
+  getMyCustomersByLeader,
+  getMyTrashCustomers,
   getMyAgentCustomers,
   getAgentCustomersByAdmin,
   getAgentCustomersByLeader,

@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post(
   "/create-subscription",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.CUSTOMER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.AGENT_LEADER, Role.CUSTOMER),
   validateRequest(createSubscriptionValidationSchema),
   SubscriptionControllers.createSubscription,
 );

@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import httpStatus from "http-status-codes";
 import { IsActive, IUser, Role } from "./user.interface";
@@ -286,10 +285,7 @@ const restoreUser = async (id: string) => {
   }
 
   if (!user.isDeleted) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "User is not in trash",
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, "User is not in trash");
   }
 
   const restoredUser = await User.findByIdAndUpdate(
@@ -941,6 +937,143 @@ const getCustomersByAgent = async ({
   };
 };
 
+const getMyTrashCustomers = async ({
+  query,
+  userId,
+  role,
+}: {
+  query: Record<string, string>;
+  userId: string;
+  role: Role;
+}) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  let createdByFilter: any;
+
+  if (role === Role.AGENT) {
+    // Agent → own customers only
+    createdByFilter = new Types.ObjectId(userId);
+  } else if (role === Role.AGENT_LEADER) {
+    // Leader → own customers + own agents' customers
+    const agents = await User.find({
+      role: Role.AGENT,
+      isDeleted: false,
+      agentLeader: new Types.ObjectId(userId),
+    }).select("_id");
+
+    createdByFilter = {
+      $in: [new Types.ObjectId(userId), ...agents.map((a) => a._id)],
+    };
+  } else {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You are not authorized to access this resource",
+    );
+  }
+
+  const baseMatch = {
+    role: Role.CUSTOMER,
+    isDeleted: true,
+    createdBy: createdByFilter,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CUSTOMER,
+    isDeleted: true,
+    createdBy: createdByFilter,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+const getMyCustomersByLeader = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const leader = await User.findById(userId);
+
+  if (!leader) {
+    throw new AppError(httpStatus.NOT_FOUND, "Agent Leader not found");
+  }
+
+  const agents = await User.find({
+    role: Role.AGENT,
+    isDeleted: false,
+    agentLeader: leader._id,
+  }).select("_id");
+
+  const agentIds = agents.map((a) => a._id);
+
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    ...dateFilter,
+    $or: [
+      {
+        createdBy: new Types.ObjectId(userId),
+      },
+      {
+        createdBy: {
+          $in: agentIds,
+        },
+      },
+    ],
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CUSTOMER,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+    $or: [
+      {
+        createdBy: new Types.ObjectId(userId),
+      },
+      {
+        createdBy: {
+          $in: agentIds,
+        },
+      },
+    ],
+  });
+
+  return { data, meta, stats };
+};
+
 export const UserServices = {
   createUserService,
   getMe,
@@ -955,6 +1088,8 @@ export const UserServices = {
   getAllCustomers,
   getMyTrashAgents,
   getMyCustomers,
+  getMyCustomersByLeader,
+  getMyTrashCustomers,
   getMyAgents,
   getAllAgents,
   getAllTrashAgents,

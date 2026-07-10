@@ -104,6 +104,18 @@ router.get(
 );
 
 router.get(
+  "/my-team-customers",
+  checkAuth(Role.AGENT_LEADER),
+  UserControllers.getMyCustomersByLeader,
+);
+
+router.get(
+  "/my-trash-customers",
+  checkAuth(Role.AGENT_LEADER),
+  UserControllers.getMyTrashCustomers,
+);
+
+router.get(
   "/my-leader-customers", // customers created by own agents
   checkAuth(Role.AGENT_LEADER),
   UserControllers.getMyAgentLeaderCustomers,
