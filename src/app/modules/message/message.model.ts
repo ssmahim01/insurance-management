@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { IMessage } from "./message.interface";
+import { IMessage, MessageType } from "./message.interface";
 
 const messageSchema = new Schema<IMessage>(
   {
@@ -13,6 +13,12 @@ const messageSchema = new Schema<IMessage>(
       type: String,
       required: true,
       trim: true,
+    },
+
+    type: {
+      type: String,
+      enum: Object.values(MessageType),
+      default: MessageType.GENERAL,
     },
 
     isDeleted: {

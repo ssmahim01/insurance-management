@@ -19,6 +19,7 @@ import { sendSMS } from "../../utils/sendSms";
 import { PlanType } from "../package/insurance-package.interface";
 
 import { SubscribeFor, IBeneficiary } from "./subscription.interface";
+import { MessageType } from "../message/message.interface";
 
 const createSubscription = async (
   payload: Partial<ISubscription> & {
@@ -265,6 +266,7 @@ else {
     await sendSMS(
       customer.phone,
       `Your payment url is ${paymentInitRes?.paymentUrl}`,
+      MessageType.SUBSCRIPTION
     );
 
     return {

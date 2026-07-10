@@ -213,50 +213,6 @@ const cancelPayment = async (query: Record<string, string>) => {
     }
 };
 
-// const updatePayment = async (id: string, payload: any) => {
-//     const session = await mongoose.startSession();
-
-//     try {
-//         session.startTransaction();
-
-//         const updatedPayment = await PaymentModel.findByIdAndUpdate(
-//             id,
-//             payload,
-//             { returnDocument: "after", runValidators: true, session }
-//         );
-//         if (!updatedPayment) {
-//             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
-//         }
-
-//         if (payload.status) {
-//             const statusMap: Record<string, string> = {
-//                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
-//                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
-//                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
-//                 [PaymentStatus.REFUNDED]: SubscriptionStatus.CANCELLED,
-//             };
-//             const subscriptionStatus = statusMap[payload.status];
-
-//             if (subscriptionStatus) {
-//                 await Subscription.findByIdAndUpdate(
-//                     updatedPayment.subscription,
-//                     { status: subscriptionStatus },
-//                     { session }
-//                 );
-//             }
-//         }
-
-//         await session.commitTransaction();
-//         return { data: updatedPayment };
-
-//     } catch (error) {
-//         await session.abortTransaction();
-//         throw error;
-//     } finally {
-//         session.endSession();
-//     }
-// };
-
 const updatePayment = async (id: string, payload: any) => {
     const existingPayment = await PaymentModel.findById(id);
 
@@ -347,20 +303,6 @@ const updatePayment = async (id: string, payload: any) => {
     }
 };
 
-// =============================================================
-// DATE FILTER HELPERS (payment-specific)
-//
-// Payment documents don't have their own startDate/endDate fields
-// so the filter always targets a single date field (default: createdAt).
-//
-// dateType param controls which field is used:
-//   created   -> createdAt  (default)
-//   updatedAt -> updatedAt
-//
-// startDate + endDate together -> range (inclusive)
-// only startDate               -> exact day match
-// only endDate                 -> exact day match
-
 
 const getPaymentDayBoundariesUTC = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -414,57 +356,6 @@ const buildPaymentQueryObj = (query: Record<string, string>) => {
     return { queryObj, startDateStr, endDateStr };
 };
 
-// const getPaymentStats = async (match: Record<string, any>) => {
-//     const agg = await PaymentModel.aggregate([
-//         { $match: match },
-//         {
-//             $group: {
-//                 _id: null,
-//                 total: { $sum: 1 },
-//                 completed: { $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] } },
-//                 pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
-//                 failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
-//                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },
-//                 totalRevenue: {
-//                     $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, "$amount", 0] },
-//                 },
-//             },
-//         },
-//     ]);
-
-//     return agg[0] || {
-//         total: 0, completed: 0, pending: 0,
-//         failed: 0, cancelled: 0, totalRevenue: 0,
-//     };
-// };
-
-// const getAllPayments = async (query: Record<string, string>) => {
-//     const { queryObj, startDateStr, endDateStr } =
-//         buildPaymentQueryObj(query);
-
-//     const baseQuery = PaymentModel.find(queryObj);
-//     const queryBuilder = new QueryBuilder(baseQuery, query);
-
-//     const data = await queryBuilder
-//         .search(paymentSearchableFields)
-//         .filter()
-//         .sort()
-//         .fields()
-//         .paginate()
-//         .build()
-//         .populate("subscription", "planType durationInMonths price status");
-
-//     const meta = await queryBuilder.getMeta();
-
-//     const statsMatch = buildPaymentDateFilter(startDateStr, endDateStr);
-//     const stats = await getPaymentStats(statsMatch);
-
-//     return { data, meta, stats };
-// };
-
-
-// getAllPayments
-
 const getPaymentStats = async (match: Record<string, any>) => {
     const agg = await PaymentModel.aggregate([
         { $match: match },
@@ -478,7 +369,7 @@ const getPaymentStats = async (match: Record<string, any>) => {
                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },
                 refunded: { $sum: { $cond: [{ $eq: ["$status", "REFUNDED"] }, 1, 0] } },
                 totalRevenue: {
-                    $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, "$amount", 0] },
+                    $sum: { $cond: [{ $eq: ["$status", "PAID"] }, "$amount", 0] },
                 },
             },
         },
@@ -489,39 +380,6 @@ const getPaymentStats = async (match: Record<string, any>) => {
         failed: 0, cancelled: 0, refunded: 0, totalRevenue: 0,
     };
 };
-
-// const getAllPayments = async (query: Record<string, string>) => {
-//     const { queryObj, startDateStr, endDateStr } =
-//         buildPaymentQueryObj(query);
-
-//     const baseQuery = PaymentModel.find({ isDeleted: false, ...queryObj });
-//     const queryBuilder = new QueryBuilder(baseQuery, query);
-
-//     const data = await queryBuilder
-//         .search(paymentSearchableFields)
-//         .filter()
-//         .sort()
-//         .fields()
-//         .paginate()
-//         .build()
-//         // .populate("subscription", "planType durationInMonths price status c");
-//         .populate({
-//             path: "subscription",
-//             select: "planType durationInMonths price status customer",
-//             populate: {
-//                 path: "customer",
-//                 select: "name phone",
-//             },
-//         });
-
-//     const meta = await queryBuilder.getMeta();
-
-//     const statsMatch = { isDeleted: false, ...buildPaymentDateFilter(startDateStr, endDateStr) };
-//     const stats = await getPaymentStats(statsMatch);
-
-//     return { data, meta, stats };
-// };
-
 
 
 const buildCustomerSubscriptionFilter = async (searchTerm: string | undefined) => {
