@@ -478,7 +478,7 @@ const getPaymentStats = async (match: Record<string, any>) => {
                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },
                 refunded: { $sum: { $cond: [{ $eq: ["$status", "REFUNDED"] }, 1, 0] } },
                 totalRevenue: {
-                    $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, "$amount", 0] },
+                    $sum: { $cond: [{ $eq: ["$status", "PAID"] }, "$amount", 0] },
                 },
             },
         },
