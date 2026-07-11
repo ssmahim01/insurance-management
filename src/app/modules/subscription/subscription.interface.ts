@@ -73,3 +73,24 @@ export interface ISubscription {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+export interface IPackageRevenue {
+  packageId: Types.ObjectId;
+  packageName: string;
+  subscriptions: number;
+  revenue: number;
+  averageRevenue: number;
+}
+
+export interface IOverviewCard {
+  subscriptions: number;
+  revenue: number;
+  averageRevenue: number;
+  packageWiseRevenue: IPackageRevenue[];
+}
+
+export interface IOverviewResponse {
+  today: IOverviewCard;
+  month: IOverviewCard;
+  lifetime: IOverviewCard;
+}

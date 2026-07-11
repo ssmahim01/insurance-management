@@ -3,6 +3,7 @@ import httpStatus from "http-status-codes";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { SubscriptionServices } from "./subscription.service";
+import { SubscriptionAnalyticsService } from "./subscription.analytics.service";
 
 const createSubscription = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user.userId;
@@ -259,6 +260,43 @@ const getCustomerSubscriptions = catchAsync(
   },
 );
 
+const getAdminOverview = catchAsync(async (req, res) => {
+  const result = await SubscriptionAnalyticsService.getAdminOverview();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Overview retrieved successfully",
+    data: result,
+  });
+});
+
+const getAgentLeaderOverview = catchAsync(async (req, res) => {
+  const result = await SubscriptionAnalyticsService.getAgentLeaderOverview(
+    req.user.userId,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Overview retrieved successfully",
+    data: result,
+  });
+});
+
+const getAgentOverview = catchAsync(async (req, res) => {
+  const result = await SubscriptionAnalyticsService.getAgentOverview(
+    req.user.userId,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Overview retrieved successfully",
+    data: result,
+  });
+});
+
 export const SubscriptionControllers = {
   createSubscription,
   getSingleSubscription,
@@ -269,6 +307,9 @@ export const SubscriptionControllers = {
   getAgentsAllSubscriptions,
   getMySubscriptions,
   getMyTrashSubscriptions,
+  getAdminOverview,
+  getAgentLeaderOverview,
+  getAgentOverview,
   permanentDeleteSubscription,
   restoreSubscription,
   getAgentLeaderSubscriptions,
