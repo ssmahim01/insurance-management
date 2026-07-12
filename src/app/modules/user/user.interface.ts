@@ -20,7 +20,7 @@ export interface IAddress {
   division?: string;
   district?: string;
   thana?: string;
-  union?: string;
+  street?: string;
 }
 
 // NOMINEE INFO (CUSTOMER ONLY)
@@ -36,10 +36,12 @@ export interface INominee {
 
 export interface IUser {
   _id?: Types.ObjectId;
-
+  
   createdBy?: Types.ObjectId;
-
+  
   agentLeader?: Types.ObjectId; // only for agents
+  
+  customId?: string;
 
   // BASIC INFO
   name: string; // full name (NID/Passport/Birth cert)

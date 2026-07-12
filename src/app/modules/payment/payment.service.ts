@@ -279,7 +279,7 @@ const updatePayment = async (id: string, payload: any) => {
                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
-                [PaymentStatus.REFUNDED]: SubscriptionStatus.CANCELLED,
+                [PaymentStatus.REFUNDED]: SubscriptionStatus.REFUNDED,
             };
             const subscriptionStatus = statusMap[payload.status];
 

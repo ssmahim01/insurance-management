@@ -1,27 +1,3 @@
-// import { z } from "zod";
-
-// import { createUserZodSchema } from "../user/user.validation";
-
-// export const createSubscriptionValidationSchema = z.object({
-//   customer: z.string().optional(),
-//   customerPayload: createUserZodSchema.optional(),
-//   package: z.string(),
-
-//   planType: z.enum([
-//     "MONTHLY",
-//     "QUARTERLY",
-//     "HALF_YEARLY",
-//     "YEARLY",
-//     "LIFETIME",
-//   ]),
-
-//   durationInMonths: z.number().optional(),
-
-//   price: z.number(),
-
-//   autoRenew: z.boolean().optional(),
-// });
-
 
 import { z } from "zod";
 import { createUserZodSchema } from "../user/user.validation";
@@ -66,12 +42,3 @@ export const createSubscriptionValidationSchema = z
 
     autoRenew: z.boolean().optional(),
   })
-  // .superRefine((data, ctx) => {
-  //   if (data.subscribeFor === "OTHER" && !data.beneficiary) {
-  //     ctx.addIssue({
-  //       code: "custom",
-  //       path: ["beneficiary"],
-  //       message: "Beneficiary information is required when subscribing for someone else",
-  //     });
-  //   }
-  // });

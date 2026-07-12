@@ -19,7 +19,8 @@ app.use(cors({
         envVars.FRONTEND_URL,
         "http://localhost:3000",
         "https://shurokkha-frontend.vercel.app",
-        "https://shurokkhaa.vercel.app"
+        "https://shurokkhaa.vercel.app",
+        "https://surokkha-frontend.vercel.app"
     ],
     credentials: true
 }))

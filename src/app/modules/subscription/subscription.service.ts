@@ -154,33 +154,6 @@ else {
       endDate.setMonth(endDate.getMonth() + selectedPlan.durationInMonths);
     }
 
-    // Prevent Duplicate Active Subscription
-    // A customer can hold multiple subscriptions for the same package as
-    // long as each one covers a different person (self, or a distinct
-    // beneficiary identified by phone). We only block a true duplicate:
-    // same customer + same package + same "covered person".
-    // const duplicateQuery: Record<string, unknown> = {
-    //   customer: customerId,
-    //   package: insurancePackage._id,
-    //   isDeleted: false,
-    //   subscribeFor,
-    // };
-
-    // if (subscribeFor === SubscribeFor.OTHER && beneficiary) {
-    //   duplicateQuery["beneficiary.phone"] = beneficiary.phone;
-    // }
-
-    // const existingSubscription = await Subscription.findOne(duplicateQuery);
-
-    // if (existingSubscription) {
-    //   throw new AppError(
-    //     httpStatus.BAD_REQUEST,
-    //     subscribeFor === SubscribeFor.OTHER
-    //       ? "A subscription for this package already exists for this beneficiary"
-    //       : "Customer already has an active subscription for this package",
-    //   );
-    // }
-
     if (subscribeFor === SubscribeFor.SELF) {
       const existingSubscription = await Subscription.findOne({
         customer: customerId,

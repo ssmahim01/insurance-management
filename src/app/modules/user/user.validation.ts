@@ -9,7 +9,7 @@ const addressSchema = z.object({
   division: z.string().optional(),
   district: z.string().optional(),
   thana: z.string().optional(),
-  union: z.string().optional(),
+  street: z.string().optional(),
 });
 
 // NOMINEE VALIDATION
@@ -46,6 +46,8 @@ export const createUserZodSchema = z.object({
       Role.MANAGER,
     ])
     .optional(),
+
+  customId: z.string().optional(),
 
   picture: z.string().optional(),
 
