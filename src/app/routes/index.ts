@@ -10,6 +10,7 @@ import { messageRoutes } from "../modules/message/message.route";
 import { NotificationRoutes } from "../modules/notification/notification.route";
 import { ContactRoutes } from "../modules/contact/contact.route";
 import { ClaimRoutes } from "../modules/claim/claim.route";
+import { DashboardRoutes } from "../modules/dashboard/dashboard.route";
 
 export const router = Router();
 
@@ -45,6 +46,10 @@ const moduleRoutes = [
      {
     path: "/message",
     route: messageRoutes
+  },
+     {
+    path: "/dashboard",
+    route: DashboardRoutes
   },
      {
     path: "/notification",

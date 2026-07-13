@@ -9,6 +9,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants";
 import { Types } from "mongoose";
+import { generateCustomId } from "../../utils/counterHelper";
 
 // =============================================================
 // DATE FILTER HELPERS
@@ -140,7 +141,10 @@ const createUserService = async (payload: Partial<IUser>) => {
     );
   }
 
-  return await User.create({ ...payload, password });
+  // ── Generate unique customId ──
+  const customId = await generateCustomId("userCustomId", "SH");
+
+  return await User.create({ ...payload, password, customId });
 };
 
 const updateUser = async (
