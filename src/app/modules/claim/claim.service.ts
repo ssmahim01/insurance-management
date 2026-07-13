@@ -83,8 +83,8 @@ const getAllClaims = async ({
 
   // Capture before deletion so stats can reuse the same range
   const startDateStr = query["startDate"];
-  const endDateStr   = query["endDate"];
-  const dateFilter   = buildDateFilter(startDateStr, endDateStr);
+  const endDateStr = query["endDate"];
+  const dateFilter = buildDateFilter(startDateStr, endDateStr);
 
   delete query.startDate;
   delete query.endDate;
@@ -109,16 +109,19 @@ const getAllClaims = async ({
   // ─── DATA QUERY ───────────────────────────────────
   const queryBuilder = new QueryBuilder(Claim.find(baseFilter), query);
 
-  const data = await queryBuilder
-    .search(claimSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .build()
-    .populate("customer", "name phone role")
-    .populate("subscription")
-    .populate("reviewedBy", "name phone role");
+const data = await queryBuilder
+  .search(claimSearchableFields)
+  .filter()
+  .sort()
+  .fields()
+  .paginate()
+  .build()
+  .populate("customer", "name phone role")
+  .populate({
+    path: "subscription",
+    populate: { path: "package", select: "name title" },
+  })
+  .populate("reviewedBy", "name phone role");
 
   const meta = await queryBuilder.getMeta();
 
@@ -140,8 +143,8 @@ const getAllClaims = async ({
     {
       $group: {
         _id: null,
-        total:    { $sum: 1 },
-        pending:  { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.PENDING] }, 1, 0] } },
+        total: { $sum: 1 },
+        pending: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.PENDING] }, 1, 0] } },
         approved: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.APPROVED] }, 1, 0] } },
         rejected: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.REJECTED] }, 1, 0] } },
       },
@@ -162,8 +165,8 @@ const getClaimStats = async (match: Record<string, any>) => {
     {
       $group: {
         _id: null,
-        total:    { $sum: 1 },
-        pending:  { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.PENDING] }, 1, 0] } },
+        total: { $sum: 1 },
+        pending: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.PENDING] }, 1, 0] } },
         approved: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.APPROVED] }, 1, 0] } },
         rejected: { $sum: { $cond: [{ $eq: ["$status", ClaimStatus.REJECTED] }, 1, 0] } },
       },
@@ -238,8 +241,8 @@ const updateClaim = async (id: string, payload: Partial<IClaim>) => {
 
   // If previously rejected and customer re-submits, reset back to pending
   if (claim.status === ClaimStatus.REJECTED) {
-    payload.status     = ClaimStatus.PENDING;
-    payload.adminNote  = "";
+    payload.status = ClaimStatus.PENDING;
+    payload.adminNote = "";
     payload.reviewedBy = undefined;
     payload.reviewedAt = undefined;
   }
@@ -267,8 +270,8 @@ const reviewClaim = async (
   const updated = await Claim.findByIdAndUpdate(
     id,
     {
-      status:     payload.status,
-      adminNote:  payload.adminNote,
+      status: payload.status,
+      adminNote: payload.adminNote,
       reviewedBy: adminId,
       reviewedAt: new Date(),
     },
@@ -289,10 +292,10 @@ const reviewClaim = async (
     : `Your claim "${claim.serviceTitle}" has been rejected.${payload.adminNote ? ` Reason: ${payload.adminNote}` : ""}`;
 
   await Notification.create({
-    user:    customer._id,
-    title:   notificationTitle,
+    user: customer._id,
+    title: notificationTitle,
     message: notificationMessage,
-    type:    NotificationType.CLAIM,
+    type: NotificationType.CLAIM,
   });
 
   return updated;
