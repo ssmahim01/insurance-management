@@ -166,7 +166,7 @@ const attachPackageAnalytics = async (packageIds: Types.ObjectId[]) => {
     },
   ]);
 
-  // packageId → analytics map বানানো
+  // packageId → analytics map 
   return agg.reduce<Record<string, any>>((map, item) => {
     map[item._id.toString()] = {
       totalSubscriptions: item.totalSubscriptions,

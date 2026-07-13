@@ -94,6 +94,22 @@ const getAllTrashNotifications = catchAsync(
   },
 );
 
+const getMyNotifications = catchAsync(async (req: Request, res: Response) => {
+  const result = await NotificationService.getMyNotifications({
+    query: req.query as Record<string, string>,
+    userId: (req.user as any).userId,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Your notifications retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
 const restoreNotification = catchAsync(async (req: Request, res: Response) => {
   const result = await NotificationService.restoreNotification(req.params.id as string);
 
@@ -119,6 +135,7 @@ const deleteNotification = catchAsync(async (req: Request, res: Response) => {
 export const NotificationController = {
   createNotification,
   getAllNotifications,
+  getMyNotifications,
   getSingleNotification,
   markAsRead,
   softDeleteNotification,
