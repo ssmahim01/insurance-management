@@ -9,6 +9,8 @@ router.post("/create-notification", checkAuth(...Object.values(Role)), Notificat
 
 router.get("/all-notifications", checkAuth(...Object.values(Role)), NotificationController.getAllNotifications);
 
+router.get("/my-notifications", checkAuth(...Object.values(Role)), NotificationController.getMyNotifications); 
+
 router.get("/all-trash-notifications", checkAuth(...Object.values(Role)), NotificationController.getAllTrashNotifications);
 
 router.get("/:id", checkAuth(...Object.values(Role)), NotificationController.getSingleNotification);
