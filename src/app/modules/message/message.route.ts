@@ -16,6 +16,10 @@ router.get(
   MessageController.getAllMessages
 );
 
+router.get("/my-messages",
+  checkAuth(...Object.values(Role)),
+  MessageController.getMyMessages);
+
 router.get(
   "/all-trash-messages",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN),

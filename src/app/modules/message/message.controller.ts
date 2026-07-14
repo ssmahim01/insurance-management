@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { MessageService } from "./message.service";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
+import { JwtPayload } from "jsonwebtoken";
 
 // CREATE
 const createMessage = async (req: Request, res: Response) => {
@@ -27,6 +28,26 @@ const getAllMessages = async (req: Request, res: Response) => {
     data: result.data,
     meta: result.meta,
     stats: result.stats
+  });
+};
+
+// GET MY MESSAGES
+const getMyMessages = async (req: Request, res: Response) => {
+  const decodedToken = req.user as JwtPayload;
+  const userId = decodedToken.userId;
+
+  const result = await MessageService.getMyMessages({
+    query: req.query as Record<string, string>,
+    userId,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Your messages retrieved successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
   });
 };
 
@@ -111,6 +132,7 @@ const deleteMessage = async (req: Request, res: Response) => {
 export const MessageController = {
   createMessage,
   getAllMessages,
+  getMyMessages,
   getSingleMessage,
   updateMessage,
   softDeleteMessage,
