@@ -105,9 +105,9 @@ const userSchema = new Schema<IUser>(
     },
 
     // NOMINEE INFO
-    nominee: {
-      type: nomineeSchema,
-    },
+    // nominee: {
+    //   type: nomineeSchema,
+    // },
 
     // SYSTEM FLAGS
     isDeleted: {
