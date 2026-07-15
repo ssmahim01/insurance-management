@@ -463,15 +463,20 @@ const getRecentCustomers = async (
   );
 
   const analytics = await Subscription.aggregate([
-    {
-      $match: {
-        customer: {
-          $in: customerIds,
-        },
-        paymentStatus: PaymentStatus.PAID,
-        isDeleted: false,
-      },
+{
+  $match: {
+    customer: {
+      $in: customerIds,
     },
+    isDeleted: false,
+
+    ...(creatorIds?.length && {
+      createdBy: {
+        $in: creatorIds,
+      },
+    }),
+  },
+},
 
     {
       $group: {
@@ -801,7 +806,475 @@ const getPaymentStatusChart = async (
   return result;
 };
 
+const getAdminSummary = async (): Promise<IDashboardSummary> => {
+  const [subscriptionAgg, customerCount, packageCount, agentCount, agentLeaderCount] =
+    await Promise.all([
+      Subscription.aggregate([
+        {
+          $match: {
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: null,
 
+            totalRevenue: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  },
+                  "$price",
+                  0,
+                ],
+              },
+            },
+
+            totalSubscriptions: {
+              $sum: 1,
+            },
+
+            activeSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.ACTIVE],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            pendingSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.PENDING],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            expiredSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.EXPIRED],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            cancelledSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.CANCELLED],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            paidSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            unpaidSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.UNPAID],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+
+      User.countDocuments({
+        role: Role.CUSTOMER,
+        isDeleted: false,
+      }),
+
+      InsurancePackage.countDocuments({
+        isDeleted: false,
+      }),
+
+      User.countDocuments({
+        role: Role.AGENT,
+        isDeleted: false,
+      }),
+
+      User.countDocuments({
+        role: Role.AGENT_LEADER,
+        isDeleted: false,
+      }),
+    ]);
+
+  const summary = subscriptionAgg[0];
+
+  const totalRevenue = summary?.totalRevenue ?? 0;
+  const totalSubscriptions = summary?.totalSubscriptions ?? 0;
+
+  return {
+    totalRevenue,
+    totalSubscriptions,
+
+    totalCustomers: customerCount,
+
+    totalPackages: packageCount,
+
+    totalAgents: agentCount,
+
+    totalAgentLeaders: agentLeaderCount,
+
+    activeSubscriptions: summary?.activeSubscriptions ?? 0,
+    pendingSubscriptions: summary?.pendingSubscriptions ?? 0,
+    expiredSubscriptions: summary?.expiredSubscriptions ?? 0,
+    cancelledSubscriptions: summary?.cancelledSubscriptions ?? 0,
+
+    paidSubscriptions: summary?.paidSubscriptions ?? 0,
+    unpaidSubscriptions: summary?.unpaidSubscriptions ?? 0,
+
+    averageRevenue:
+      totalSubscriptions === 0
+        ? 0
+        : Number((totalRevenue / totalSubscriptions).toFixed(2)),
+  };
+};
+
+const getAgentLeaderSummary = async (
+  creatorIds: Types.ObjectId[],
+): Promise<IDashboardSummary> => {
+  const [subscriptionAgg, customerCount, teamAgentCount, packageCount] =
+    await Promise.all([
+      Subscription.aggregate([
+        {
+          $match: {
+            createdBy: {
+              $in: creatorIds,
+            },
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+
+            totalRevenue: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  },
+                  "$price",
+                  0,
+                ],
+              },
+            },
+
+            totalSubscriptions: {
+              $sum: 1,
+            },
+
+            activeSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.ACTIVE],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            pendingSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.PENDING],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            expiredSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.EXPIRED],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            cancelledSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.CANCELLED],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            paidSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            unpaidSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.UNPAID],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+
+      User.countDocuments({
+        role: Role.CUSTOMER,
+        isDeleted: false,
+        createdBy: {
+          $in: creatorIds,
+        },
+      }),
+
+      User.countDocuments({
+        role: Role.AGENT,
+        isDeleted: false,
+        agentLeader: creatorIds[0],
+      }),
+
+      InsurancePackage.countDocuments({
+        isDeleted: false,
+      }),
+    ]);
+
+  const summary = subscriptionAgg[0];
+
+  const totalRevenue = summary?.totalRevenue ?? 0;
+  const totalSubscriptions = summary?.totalSubscriptions ?? 0;
+
+  return {
+    totalRevenue,
+    totalSubscriptions,
+
+    totalCustomers: customerCount,
+
+    totalPackages: packageCount,
+
+    totalAgents: teamAgentCount,
+
+    totalAgentLeaders: 0,
+
+    activeSubscriptions: summary?.activeSubscriptions ?? 0,
+    pendingSubscriptions: summary?.pendingSubscriptions ?? 0,
+    expiredSubscriptions: summary?.expiredSubscriptions ?? 0,
+    cancelledSubscriptions: summary?.cancelledSubscriptions ?? 0,
+
+    paidSubscriptions: summary?.paidSubscriptions ?? 0,
+    unpaidSubscriptions: summary?.unpaidSubscriptions ?? 0,
+
+    averageRevenue:
+      totalSubscriptions === 0
+        ? 0
+        : Number((totalRevenue / totalSubscriptions).toFixed(2)),
+  };
+};
+
+const getAgentSummary = async (
+  creatorIds: Types.ObjectId[],
+): Promise<IDashboardSummary> => {
+  const [subscriptionAgg, customerCount, packageCount] =
+    await Promise.all([
+      Subscription.aggregate([
+        {
+          $match: {
+            createdBy: {
+              $in: creatorIds,
+            },
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+
+            totalRevenue: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  },
+                  "$price",
+                  0,
+                ],
+              },
+            },
+
+            totalSubscriptions: {
+              $sum: 1,
+            },
+
+            activeSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.ACTIVE],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            pendingSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.PENDING],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            expiredSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.EXPIRED],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            cancelledSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", SubscriptionStatus.CANCELLED],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            paidSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            unpaidSubscriptions: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$paymentStatus", PaymentStatus.UNPAID],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+
+      User.countDocuments({
+        role: Role.CUSTOMER,
+        isDeleted: false,
+        createdBy: {
+          $in: creatorIds,
+        },
+      }),
+
+      InsurancePackage.countDocuments({
+        isDeleted: false,
+      }),
+    ]);
+
+  const summary = subscriptionAgg[0];
+
+  const totalRevenue = summary?.totalRevenue ?? 0;
+  const totalSubscriptions = summary?.totalSubscriptions ?? 0;
+
+  return {
+    totalRevenue,
+    totalSubscriptions,
+
+    totalCustomers: customerCount,
+
+    totalPackages: packageCount,
+
+    totalAgents: 0,
+
+    totalAgentLeaders: 0,
+
+    activeSubscriptions: summary?.activeSubscriptions ?? 0,
+    pendingSubscriptions: summary?.pendingSubscriptions ?? 0,
+    expiredSubscriptions: summary?.expiredSubscriptions ?? 0,
+    cancelledSubscriptions: summary?.cancelledSubscriptions ?? 0,
+
+    paidSubscriptions: summary?.paidSubscriptions ?? 0,
+    unpaidSubscriptions: summary?.unpaidSubscriptions ?? 0,
+
+    averageRevenue:
+      totalSubscriptions === 0
+        ? 0
+        : Number((totalRevenue / totalSubscriptions).toFixed(2)),
+  };
+};
 
 const getAdminDashboard = async (): Promise<IDashboardResponse> => {
  const [
@@ -814,7 +1287,7 @@ const getAdminDashboard = async (): Promise<IDashboardResponse> => {
   recentSubscriptions,
   recentCustomers,
 ] = await Promise.all([
-  getDashboardSummary(),
+  getAdminSummary(),
 
   generateOverview(),
 
@@ -848,43 +1321,43 @@ const getAgentDashboard = async (
 ): Promise<IDashboardResponse> => {
   const creatorIds = [new Types.ObjectId(userId)];
 
- const [
-  summary,
-  overview,
-  topPackages,
-  revenueChart,
-  subscriptionStatusChart,
-  paymentStatusChart,
-  recentSubscriptions,
-  recentCustomers,
-] = await Promise.all([
-  getDashboardSummary(creatorIds),
+  const [
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers,
+  ] = await Promise.all([
+    getAgentSummary(creatorIds),
 
-  generateOverview(creatorIds),
+    generateOverview(creatorIds),
 
-  getTopPackages(creatorIds),
+    getTopPackages(creatorIds),
 
-  getRevenueChart(creatorIds),
+    getRevenueChart(creatorIds),
 
-  getSubscriptionStatusChart(creatorIds),
+    getSubscriptionStatusChart(creatorIds),
 
-  getPaymentStatusChart(creatorIds),
+    getPaymentStatusChart(creatorIds),
 
-  getRecentSubscriptions(creatorIds),
+    getRecentSubscriptions(creatorIds),
 
-  getRecentCustomers(creatorIds),
-]);
+    getRecentCustomers(creatorIds),
+  ]);
 
-return {
-  summary,
-  overview,
-  topPackages,
-  revenueChart,
-  subscriptionStatusChart,
-  paymentStatusChart,
-  recentSubscriptions,
-  recentCustomers,
-};
+  return {
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers,
+  };
 };
 
 const getAgentLeaderDashboard = async (
@@ -897,7 +1370,10 @@ const getAgentLeaderDashboard = async (
   });
 
   if (!leader) {
-    throw new AppError(httpStatus.NOT_FOUND, "Agent Leader not found");
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Agent Leader not found",
+    );
   }
 
   const agents = await User.find({
@@ -911,43 +1387,43 @@ const getAgentLeaderDashboard = async (
     ...agents.map((agent) => agent._id as Types.ObjectId),
   ];
 
- const [
-  summary,
-  overview,
-  topPackages,
-  revenueChart,
-  subscriptionStatusChart,
-  paymentStatusChart,
-  recentSubscriptions,
-  recentCustomers,
-] = await Promise.all([
-  getDashboardSummary(creatorIds),
+  const [
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers,
+  ] = await Promise.all([
+    getAgentLeaderSummary(creatorIds),
 
-  generateOverview(creatorIds),
+    generateOverview(creatorIds),
 
-  getTopPackages(creatorIds),
+    getTopPackages(creatorIds),
 
-  getRevenueChart(creatorIds),
+    getRevenueChart(creatorIds),
 
-  getSubscriptionStatusChart(creatorIds),
+    getSubscriptionStatusChart(creatorIds),
 
-  getPaymentStatusChart(creatorIds),
+    getPaymentStatusChart(creatorIds),
 
-  getRecentSubscriptions(creatorIds),
+    getRecentSubscriptions(creatorIds),
 
-  getRecentCustomers(creatorIds),
-]);
+    getRecentCustomers(creatorIds),
+  ]);
 
-return {
-  summary,
-  overview,
-  topPackages,
-  revenueChart,
-  subscriptionStatusChart,
-  paymentStatusChart,
-  recentSubscriptions,
-  recentCustomers,
-};
+  return {
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers,
+  };
 };
 
 export const DashboardServices = {
