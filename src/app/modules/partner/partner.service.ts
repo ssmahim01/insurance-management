@@ -92,9 +92,7 @@ const getPartnerStats = async (match: Record<string, any>) => {
   };
 };
 
-// =============================================================
 // PARTNER SERVICES
-// =============================================================
 
 const createPartner = async (
   payload: Partial<IPartner>,
