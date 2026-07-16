@@ -52,6 +52,16 @@ interface EnvConfig {
     SSL_CANCEL_FRONTEND_URL: string,
     SSL_IPN_URL: string
   },
+
+  SURJOPAY: {
+    SP_BASE_URL: string;
+    SP_USERNAME: string;
+    SP_PASSWORD: string;
+    SP_PREFIX: string;
+    SP_RETURN_URL: string;
+    SP_CANCEL_URL: string;
+    SP_CURRENCY: string;
+  },
 }
 
 const loadEnvVariables = (): EnvConfig => {
@@ -97,6 +107,14 @@ const loadEnvVariables = (): EnvConfig => {
     "SSL_SUCCESS_FRONTEND_URL",
     "SSL_FAIL_FRONTEND_URL",
     "SSL_CANCEL_FRONTEND_URL",
+
+    "SP_BASE_URL",
+    "SP_USERNAME",
+    "SP_PASSWORD",
+    "SP_PREFIX",
+    "SP_RETURN_URL",
+    "SP_CANCEL_URL",
+    "SP_CURRENCY",
 
   ];
 
@@ -154,6 +172,16 @@ const loadEnvVariables = (): EnvConfig => {
       SSL_FAIL_FRONTEND_URL: process.env.SSL_FAIL_FRONTEND_URL as string,
       SSL_CANCEL_FRONTEND_URL: process.env.SSL_CANCEL_FRONTEND_URL as string,
       SSL_IPN_URL: process.env.SSL_IPN_URL as string
+    },
+
+    SURJOPAY: {
+      SP_BASE_URL: process.env.SP_BASE_URL as string,
+      SP_USERNAME: process.env.SP_USERNAME as string,
+      SP_PASSWORD: process.env.SP_PASSWORD as string,
+      SP_PREFIX: process.env.SP_PREFIX as string,
+      SP_RETURN_URL: process.env.SP_RETURN_URL as string,
+      SP_CANCEL_URL: process.env.SP_CANCEL_URL as string,
+      SP_CURRENCY: process.env.SP_CURRENCY as string,
     },
   };
 };

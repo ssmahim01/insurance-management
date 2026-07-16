@@ -24,52 +24,6 @@ const initPayment = catchAsync(
     }
 );
 
-const successPayment = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
-
-        const result =
-            await PaymentService.successPayment(
-                query as Record<string, string>
-            );
-
-        if (result?.success) {
-            res.redirect(`${envVars.SSL.SSL_SUCCESS_FRONTEND_URL}?transactionId=${query.transactionId}&amount=${query.amount}&status=${query.status}`)
-        }
-    }
-);
-
-const failPayment = catchAsync(
-    async (req: Request, res: Response) => {
-        const query = req.query;
-
-        const result =
-            await PaymentService.failPayment(
-                query as Record<string, string>
-            );
-
-        if (!result.success) {
-            res.redirect(`${envVars.SSL.SSL_FAIL_FRONTEND_URL}?transactionId=${query.transactionId}&amount=${query.amount}&status=${query.status}`)
-        }
-    }
-);
-
-const cancelPayment = catchAsync(
-    async (req: Request, res: Response) => {
-
-        const query = req.query;
-
-        const result =
-            await PaymentService.cancelPayment(
-                query as Record<string, string>
-            );
-
-        if (result?.success) {
-            res.redirect(`${envVars.SSL.SSL_CANCEL_FRONTEND_URL}?transactionId=${query.transactionId}&amount=${query.amount}&status=${query.status}`)
-        }
-    }
-);
-
 const getAllPayments = catchAsync(async (req: Request, res: Response) => {
     const result = await PaymentService.getAllPayments(
         req.query as Record<string, string>
@@ -172,11 +126,44 @@ const validatePayment = catchAsync(
     }
 );
 
+const paymentReturn = catchAsync(
+    async (req: Request, res: Response) => {
+        const spOrderId = (req.query.order_id ||
+            req.body.order_id) as string;
+
+        const result = await PaymentService.verifyAndFinalizePayment(
+            spOrderId
+        );
+
+        if (result.success) {
+            return res.redirect(
+                `${envVars.SSL.SSL_SUCCESS_FRONTEND_URL}?transactionId=${result.transactionId}&amount=${result.amount}&status=${result.status}`
+            );
+        }
+
+        return res.redirect(
+            `${envVars.SSL.SSL_FAIL_FRONTEND_URL}?transactionId=${result.transactionId}&amount=${result.amount}&status=${result.status}`
+        );
+    }
+);
+
+const paymentCancel = catchAsync(
+    async (req: Request, res: Response) => {
+        const spOrderId = (req.query.order_id ||
+            req.body.order_id) as string;
+
+        const result = await PaymentService.verifyAndFinalizePayment(
+            spOrderId
+        );
+
+        return res.redirect(
+            `${envVars.SSL.SSL_CANCEL_FRONTEND_URL}?transactionId=${result.transactionId}&amount=${result.amount}&status=${result.status}`
+        );
+    }
+);
+
 export const PaymentController = {
-    initPayment,   
-    successPayment,  
-    failPayment,    
-    cancelPayment,  
+    initPayment,     
     validatePayment, 
     getAllPayments,   
     getSinglePayment, 
@@ -185,4 +172,6 @@ export const PaymentController = {
     deletePayment,   
     getAllTrashPayments,
     restorePayment,  
+    paymentCancel,
+    paymentReturn
 };
