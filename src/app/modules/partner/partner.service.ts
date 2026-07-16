@@ -46,23 +46,6 @@ const buildDateFilter = (
   return { createdAt: { $gte: start, $lte: end } };
 };
 
-// const buildQueryObj = (query: Record<string, string>) => {
-//   const queryObj: any = {};
-
-//   const startDateStr = query["startDate"];
-//   const endDateStr   = query["endDate"];
-
-//   Object.assign(queryObj, buildDateFilter(startDateStr, endDateStr));
-
-//   if (query.isActive !== undefined) queryObj.isActive = query.isActive === "true";
-
-//   delete query.startDate;
-//   delete query.endDate;
-
-//   return { queryObj, startDateStr, endDateStr };
-// };
-
-
 const buildQueryObj = (query: Record<string, string>) => {
   const queryObj: any = {};
 
