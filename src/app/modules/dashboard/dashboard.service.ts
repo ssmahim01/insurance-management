@@ -247,6 +247,262 @@ const getDashboardSummary = async (
   };
 };
 
+const getCustomerSummary = async (
+  customerId: Types.ObjectId,
+): Promise<IDashboardSummary> => {
+  const [subscriptionAgg] = await Promise.all([
+    Subscription.aggregate([
+      {
+        $match: {
+          customer: customerId,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                },
+                "$price",
+                0,
+              ],
+            },
+          },
+
+          totalSubscriptions: {
+            $sum: 1,
+          },
+
+          activeSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.ACTIVE],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          pendingSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.PENDING],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          expiredSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.EXPIRED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          cancelledSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.CANCELLED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          paidSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          unpaidSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.UNPAID],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const summary = subscriptionAgg[0];
+
+  const totalRevenue = summary?.totalRevenue ?? 0;
+  const totalSubscriptions = summary?.totalSubscriptions ?? 0;
+
+  return {
+    totalRevenue,
+    totalSubscriptions,
+
+    totalCustomers: 1,
+
+    totalPackages: 0,
+
+    totalAgents: 0,
+
+    totalAgentLeaders: 0,
+
+    activeSubscriptions: summary?.activeSubscriptions ?? 0,
+
+    pendingSubscriptions: summary?.pendingSubscriptions ?? 0,
+
+    expiredSubscriptions: summary?.expiredSubscriptions ?? 0,
+
+    cancelledSubscriptions: summary?.cancelledSubscriptions ?? 0,
+
+    paidSubscriptions: summary?.paidSubscriptions ?? 0,
+
+    unpaidSubscriptions: summary?.unpaidSubscriptions ?? 0,
+
+    averageRevenue:
+      totalSubscriptions === 0
+        ? 0
+        : Number((totalRevenue / totalSubscriptions).toFixed(2)),
+  };
+};
+
+const buildCustomerMatch = (
+  customerId: Types.ObjectId | Types.ObjectId[],
+  startDate?: Date,
+  endDate?: Date,
+) => {
+  const match: Record<string, any> = {
+    isDeleted: false,
+  };
+
+  if (Array.isArray(customerId)) {
+    if (customerId.length) {
+      match.customer = { $in: customerId };
+    }
+  } else if (customerId) {
+    match.customer = customerId;
+  }
+
+  if (startDate && endDate) {
+    match.createdAt = {
+      $gte: startDate,
+      $lte: endDate,
+    };
+  }
+
+  return match;
+};
+
+const generateCustomerOverview = async (
+  customerId: Types.ObjectId,
+): Promise<IDashboardOverview> => {
+  const { startToday, endToday, startMonth, endMonth } = getDateRanges();
+
+  const [today, month, lifetime] = await Promise.all([
+    getOverviewCard(buildCustomerMatch(customerId, startToday, endToday)),
+
+    getOverviewCard(buildCustomerMatch(customerId, startMonth, endMonth)),
+
+    getOverviewCard(buildCustomerMatch(customerId)),
+  ]);
+
+  return {
+    today,
+    month,
+    lifetime,
+  };
+};
+
+const getCustomerTopPackages = async (customerId: Types.ObjectId) => {
+  return Subscription.aggregate([
+    {
+      $match: {
+        customer: customerId,
+        isDeleted: false,
+      },
+    },
+
+    {
+      $lookup: {
+        from: "insurancepackages",
+        localField: "package",
+        foreignField: "_id",
+        as: "package",
+      },
+    },
+
+    {
+      $unwind: "$package",
+    },
+
+    {
+      $group: {
+        _id: "$package._id",
+
+        packageName: {
+          $first: "$package.name",
+        },
+
+        subscriptions: {
+          $sum: 1,
+        },
+
+        totalRevenue: {
+          $sum: "$price",
+        },
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+
+        packageId: "$_id",
+
+        packageName: 1,
+
+        subscriptions: 1,
+
+        totalRevenue: 1,
+
+        averageRevenue: {
+          $divide: ["$totalRevenue", "$subscriptions"],
+        },
+      },
+    },
+
+    {
+      $sort: {
+        totalRevenue: -1,
+      },
+    },
+  ]);
+};
+
 const getOverviewCard = async (
   match: Record<string, any>,
 ): Promise<IDashboardOverviewCard> => {
@@ -402,36 +658,76 @@ const getRecentSubscriptions = async (
   return subscriptions.map((subscription: any) => ({
     _id: subscription._id.toString(),
 
-    customerName:
-      subscription.customer?.name ?? "",
+    customerName: subscription.customer?.name ?? "",
 
-    customerPhone:
-      subscription.customer?.phone ?? "",
+    customerPhone: subscription.customer?.phone ?? "",
 
-    customerPicture:
-      subscription.customer?.picture ?? "",
+    customerPicture: subscription.customer?.picture ?? "",
 
-    packageName:
-      subscription.package?.name ?? "",
+    packageName: subscription.package?.name ?? "",
 
     amount: subscription.price,
 
-    paymentStatus:
-      subscription.paymentStatus,
+    paymentStatus: subscription.paymentStatus,
 
-    subscriptionStatus:
-      subscription.status,
+    subscriptionStatus: subscription.status,
 
-    agentName:
-      subscription.createdBy?.name ?? "",
+    agentName: subscription.createdBy?.name ?? "",
 
-    agentRole:
-      subscription.createdBy?.role ?? "",
+    agentRole: subscription.createdBy?.role ?? "",
 
-    createdAt:
-      subscription.createdAt,
+    createdAt: subscription.createdAt,
   }));
 };
+const getRecentSubscriptionsByCustomer = async (
+  customerId?: Types.ObjectId[],
+): Promise<IRecentSubscription[]> => {
+  const filter: Record<string, any> = {
+    isDeleted: false,
+  };
+
+  if (customerId?.length) {
+    filter.customer = {
+      $in: customerId,
+    };
+  }
+
+  const subscriptions = await Subscription.find(filter)
+    .populate("customer", "name phone picture")
+    .populate("package", "name")
+    .populate("createdBy", "name role")
+    .sort({
+      createdAt: -1,
+    })
+    .limit(10)
+    .lean();
+
+  return subscriptions.map((subscription: any) => ({
+    _id: subscription._id.toString(),
+
+    customerName: subscription.customer?.name ?? "",
+
+    customerPhone: subscription.customer?.phone ?? "",
+
+    customerPicture: subscription.customer?.picture ?? "",
+
+    packageName: subscription.package?.name ?? "",
+
+    amount: subscription.price,
+
+    paymentStatus: subscription.paymentStatus,
+
+    subscriptionStatus: subscription.status,
+
+    agentName: subscription.customer?.name ?? "",
+
+    agentRole: subscription.customer?.role ?? "",
+
+    createdAt: subscription.createdAt,
+  }));
+};
+
+const getCustomerRecentCustomers = async () => [];
 
 const getRecentCustomers = async (
   creatorIds?: Types.ObjectId[],
@@ -449,34 +745,30 @@ const getRecentCustomers = async (
 
   const customers = await User.find(filter)
     .populate("createdBy", "name role")
-    .select(
-      "name phone picture createdBy createdAt",
-    )
+    .select("name phone picture createdBy createdAt")
     .sort({
       createdAt: -1,
     })
     .limit(10)
     .lean();
 
-  const customerIds = customers.map(
-    (customer: any) => customer._id,
-  );
+  const customerIds = customers.map((customer: any) => customer._id);
 
   const analytics = await Subscription.aggregate([
-{
-  $match: {
-    customer: {
-      $in: customerIds,
-    },
-    isDeleted: false,
+    {
+      $match: {
+        customer: {
+          $in: customerIds,
+        },
+        isDeleted: false,
 
-    ...(creatorIds?.length && {
-      createdBy: {
-        $in: creatorIds,
+        ...(creatorIds?.length && {
+          createdBy: {
+            $in: creatorIds,
+          },
+        }),
       },
-    }),
-  },
-},
+    },
 
     {
       $group: {
@@ -493,30 +785,21 @@ const getRecentCustomers = async (
     },
   ]);
 
-  const analyticsMap =
-    analytics.reduce<Record<string, any>>(
-      (acc, item) => {
-        acc[item._id.toString()] = {
-          totalSubscriptions:
-            item.totalSubscriptions,
+  const analyticsMap = analytics.reduce<Record<string, any>>((acc, item) => {
+    acc[item._id.toString()] = {
+      totalSubscriptions: item.totalSubscriptions,
 
-          totalSpent:
-            item.totalSpent,
-        };
+      totalSpent: item.totalSpent,
+    };
 
-        return acc;
-      },
-      {},
-    );
+    return acc;
+  }, {});
 
   return customers.map((customer: any) => {
-    const customerAnalytics =
-      analyticsMap[
-        customer._id.toString()
-      ] ?? {
-        totalSubscriptions: 0,
-        totalSpent: 0,
-      };
+    const customerAnalytics = analyticsMap[customer._id.toString()] ?? {
+      totalSubscriptions: 0,
+      totalSpent: 0,
+    };
 
     return {
       _id: customer._id.toString(),
@@ -527,20 +810,15 @@ const getRecentCustomers = async (
 
       picture: customer.picture,
 
-      createdBy:
-        customer.createdBy?.name ?? "",
+      createdBy: customer.createdBy?.name ?? "",
 
-      createdByRole:
-        customer.createdBy?.role ?? "",
+      createdByRole: customer.createdBy?.role ?? "",
 
-      createdAt:
-        customer.createdAt,
+      createdAt: customer.createdAt,
 
-      totalSubscriptions:
-        customerAnalytics.totalSubscriptions,
+      totalSubscriptions: customerAnalytics.totalSubscriptions,
 
-      totalSpent:
-        customerAnalytics.totalSpent,
+      totalSpent: customerAnalytics.totalSpent,
     };
   });
 };
@@ -601,19 +879,13 @@ const getTopPackages = async (
         averageRevenue: {
           $cond: [
             {
-              $eq: [
-                "$subscriptions",
-                0,
-              ],
+              $eq: ["$subscriptions", 0],
             },
 
             0,
 
             {
-              $divide: [
-                "$totalRevenue",
-                "$subscriptions",
-              ],
+              $divide: ["$totalRevenue", "$subscriptions"],
             },
           ],
         },
@@ -634,9 +906,7 @@ const getTopPackages = async (
   return result;
 };
 
-const getRevenueChart = async (
-  creatorIds?: Types.ObjectId[],
-) => {
+const getRevenueChart = async (creatorIds?: Types.ObjectId[]) => {
   const match = buildMatch(creatorIds);
 
   const result = await Subscription.aggregate([
@@ -718,9 +988,95 @@ const getRevenueChart = async (
   return result.slice(-12);
 };
 
-const getSubscriptionStatusChart = async (
-  creatorIds?: Types.ObjectId[],
+const getCustomerRevenueChart = async (
+  customerId: Types.ObjectId,
 ) => {
+ const match = buildCustomerMatch(customerId);
+
+  const result = await Subscription.aggregate([
+    {
+      $match: match,
+    },
+
+    {
+      $group: {
+        _id: {
+          year: {
+            $year: "$createdAt",
+          },
+
+          month: {
+            $month: "$createdAt",
+          },
+        },
+
+        revenue: {
+          $sum: "$price",
+        },
+
+        subscriptions: {
+          $sum: 1,
+        },
+      },
+    },
+
+    {
+      $sort: {
+        "_id.year": 1,
+        "_id.month": 1,
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+
+        month: {
+          $concat: [
+            {
+              $arrayElemAt: [
+                [
+                  "",
+                  "Jan",
+                  "Feb",
+                  "Mar",
+                  "Apr",
+                  "May",
+                  "Jun",
+                  "Jul",
+                  "Aug",
+                  "Sep",
+                  "Oct",
+                  "Nov",
+                  "Dec",
+                ],
+                "$_id.month",
+              ],
+            },
+
+            " ",
+
+            {
+              $toString: "$_id.year",
+            },
+          ],
+        },
+
+        revenue: 1,
+
+        subscriptions: 1,
+      },
+    },
+  ]);
+
+  return result.slice(-12);
+};
+
+const getCustomerRecentSubscriptions = async (customerId: Types.ObjectId) => {
+  return getRecentSubscriptionsByCustomer([customerId]);
+};
+
+const getSubscriptionStatusChart = async (creatorIds?: Types.ObjectId[]) => {
   const match = buildMatch(creatorIds);
 
   const result = await Subscription.aggregate([
@@ -758,9 +1114,7 @@ const getSubscriptionStatusChart = async (
   return result;
 };
 
-const getPaymentStatusChart = async (
-  creatorIds?: Types.ObjectId[],
-) => {
+const getPaymentStatusChart = async (creatorIds?: Types.ObjectId[]) => {
   const match: Record<string, any> = {
     isDeleted: false,
   };
@@ -807,128 +1161,133 @@ const getPaymentStatusChart = async (
 };
 
 const getAdminSummary = async (): Promise<IDashboardSummary> => {
-  const [subscriptionAgg, customerCount, packageCount, agentCount, agentLeaderCount] =
-    await Promise.all([
-      Subscription.aggregate([
-        {
-          $match: {
-            isDeleted: false,
-          },
+  const [
+    subscriptionAgg,
+    customerCount,
+    packageCount,
+    agentCount,
+    agentLeaderCount,
+  ] = await Promise.all([
+    Subscription.aggregate([
+      {
+        $match: {
+          isDeleted: false,
         },
-        {
-          $group: {
-            _id: null,
+      },
+      {
+        $group: {
+          _id: null,
 
-            totalRevenue: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$paymentStatus", PaymentStatus.PAID],
-                  },
-                  "$price",
-                  0,
-                ],
-              },
-            },
-
-            totalSubscriptions: {
-              $sum: 1,
-            },
-
-            activeSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.ACTIVE],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            pendingSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.PENDING],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            expiredSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.EXPIRED],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            cancelledSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.CANCELLED],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            paidSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$paymentStatus", PaymentStatus.PAID],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            unpaidSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$paymentStatus", PaymentStatus.UNPAID],
-                  },
-                  1,
-                  0,
-                ],
-              },
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                },
+                "$price",
+                0,
+              ],
             },
           },
+
+          totalSubscriptions: {
+            $sum: 1,
+          },
+
+          activeSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.ACTIVE],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          pendingSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.PENDING],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          expiredSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.EXPIRED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          cancelledSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.CANCELLED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          paidSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          unpaidSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.UNPAID],
+                },
+                1,
+                0,
+              ],
+            },
+          },
         },
-      ]),
+      },
+    ]),
 
-      User.countDocuments({
-        role: Role.CUSTOMER,
-        isDeleted: false,
-      }),
+    User.countDocuments({
+      role: Role.CUSTOMER,
+      isDeleted: false,
+    }),
 
-      InsurancePackage.countDocuments({
-        isDeleted: false,
-      }),
+    InsurancePackage.countDocuments({
+      isDeleted: false,
+    }),
 
-      User.countDocuments({
-        role: Role.AGENT,
-        isDeleted: false,
-      }),
+    User.countDocuments({
+      role: Role.AGENT,
+      isDeleted: false,
+    }),
 
-      User.countDocuments({
-        role: Role.AGENT_LEADER,
-        isDeleted: false,
-      }),
-    ]);
+    User.countDocuments({
+      role: Role.AGENT_LEADER,
+      isDeleted: false,
+    }),
+  ]);
 
   const summary = subscriptionAgg[0];
 
@@ -1125,124 +1484,123 @@ const getAgentLeaderSummary = async (
 const getAgentSummary = async (
   creatorIds: Types.ObjectId[],
 ): Promise<IDashboardSummary> => {
-  const [subscriptionAgg, customerCount, packageCount] =
-    await Promise.all([
-      Subscription.aggregate([
-        {
-          $match: {
-            createdBy: {
-              $in: creatorIds,
-            },
-            isDeleted: false,
+  const [subscriptionAgg, customerCount, packageCount] = await Promise.all([
+    Subscription.aggregate([
+      {
+        $match: {
+          createdBy: {
+            $in: creatorIds,
           },
+          isDeleted: false,
         },
-        {
-          $group: {
-            _id: null,
+      },
+      {
+        $group: {
+          _id: null,
 
-            totalRevenue: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$paymentStatus", PaymentStatus.PAID],
-                  },
-                  "$price",
-                  0,
-                ],
-              },
-            },
-
-            totalSubscriptions: {
-              $sum: 1,
-            },
-
-            activeSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.ACTIVE],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            pendingSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.PENDING],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            expiredSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.EXPIRED],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            cancelledSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$status", SubscriptionStatus.CANCELLED],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            paidSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$paymentStatus", PaymentStatus.PAID],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-
-            unpaidSubscriptions: {
-              $sum: {
-                $cond: [
-                  {
-                    $eq: ["$paymentStatus", PaymentStatus.UNPAID],
-                  },
-                  1,
-                  0,
-                ],
-              },
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                },
+                "$price",
+                0,
+              ],
             },
           },
-        },
-      ]),
 
-      User.countDocuments({
-        role: Role.CUSTOMER,
-        isDeleted: false,
-        createdBy: {
-          $in: creatorIds,
-        },
-      }),
+          totalSubscriptions: {
+            $sum: 1,
+          },
 
-      InsurancePackage.countDocuments({
-        isDeleted: false,
-      }),
-    ]);
+          activeSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.ACTIVE],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          pendingSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.PENDING],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          expiredSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.EXPIRED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          cancelledSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", SubscriptionStatus.CANCELLED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          paidSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          unpaidSubscriptions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentStatus", PaymentStatus.UNPAID],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    User.countDocuments({
+      role: Role.CUSTOMER,
+      isDeleted: false,
+      createdBy: {
+        $in: creatorIds,
+      },
+    }),
+
+    InsurancePackage.countDocuments({
+      isDeleted: false,
+    }),
+  ]);
 
   const summary = subscriptionAgg[0];
 
@@ -1276,44 +1634,161 @@ const getAgentSummary = async (
   };
 };
 
-const getAdminDashboard = async (): Promise<IDashboardResponse> => {
- const [
-  summary,
-  overview,
-  topPackages,
-  revenueChart,
-  subscriptionStatusChart,
-  paymentStatusChart,
-  recentSubscriptions,
-  recentCustomers,
-] = await Promise.all([
-  getAdminSummary(),
+const getCustomerSubscriptionStatusChart = async (
+  customerId: Types.ObjectId,
+) => {
+  return Subscription.aggregate([
+    {
+      $match: {
+        customer: customerId,
+        isDeleted: false,
+      },
+    },
 
-  generateOverview(),
+    {
+      $group: {
+        _id: "$status",
 
-  getTopPackages(),
+        value: {
+          $sum: 1,
+        },
+      },
+    },
 
-  getRevenueChart(),
+    {
+      $project: {
+        _id: 0,
 
-  getSubscriptionStatusChart(),
+        name: "$_id",
 
-  getPaymentStatusChart(),
+        value: 1,
+      },
+    },
 
-  getRecentSubscriptions(),
-
-  getRecentCustomers(),
-]);
-
-return {
-  summary,
-  overview,
-  topPackages,
-  revenueChart,
-  subscriptionStatusChart,
-  paymentStatusChart,
-  recentSubscriptions,
-  recentCustomers,
+    {
+      $sort: {
+        value: -1,
+      },
+    },
+  ]);
 };
+
+const getCustomerPaymentStatusChart = async (customerId: Types.ObjectId) => {
+  return Subscription.aggregate([
+    {
+      $match: {
+        customer: customerId,
+        isDeleted: false,
+      },
+    },
+
+    {
+      $group: {
+        _id: "$paymentStatus",
+
+        value: {
+          $sum: 1,
+        },
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+
+        name: "$_id",
+
+        value: 1,
+      },
+    },
+
+    {
+      $sort: {
+        value: -1,
+      },
+    },
+  ]);
+};
+
+const getCustomerDashboard = async (
+  userId: string,
+): Promise<IDashboardResponse> => {
+  const customerId = new Types.ObjectId(userId);
+
+  const [
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+  ] = await Promise.all([
+    getCustomerSummary(customerId),
+
+    generateCustomerOverview(customerId),
+
+    getCustomerTopPackages(customerId),
+
+    getCustomerRevenueChart(customerId),
+
+    getCustomerSubscriptionStatusChart(customerId),
+
+    getCustomerPaymentStatusChart(customerId),
+
+    getCustomerRecentSubscriptions(customerId),
+  ]);
+
+  return {
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers: [],
+  };
+};
+
+const getAdminDashboard = async (): Promise<IDashboardResponse> => {
+  const [
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers,
+  ] = await Promise.all([
+    getAdminSummary(),
+
+    generateOverview(),
+
+    getTopPackages(),
+
+    getRevenueChart(),
+
+    getSubscriptionStatusChart(),
+
+    getPaymentStatusChart(),
+
+    getRecentSubscriptions(),
+
+    getRecentCustomers(),
+  ]);
+
+  return {
+    summary,
+    overview,
+    topPackages,
+    revenueChart,
+    subscriptionStatusChart,
+    paymentStatusChart,
+    recentSubscriptions,
+    recentCustomers,
+  };
 };
 
 const getAgentDashboard = async (
@@ -1370,10 +1845,7 @@ const getAgentLeaderDashboard = async (
   });
 
   if (!leader) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Agent Leader not found",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, "Agent Leader not found");
   }
 
   const agents = await User.find({
@@ -1430,4 +1902,5 @@ export const DashboardServices = {
   getAdminDashboard,
   getAgentDashboard,
   getAgentLeaderDashboard,
+  getCustomerDashboard,
 };

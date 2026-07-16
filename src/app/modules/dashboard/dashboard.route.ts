@@ -16,6 +16,7 @@ router.get(
     Role.MANAGER,
     Role.AGENT_LEADER,
     Role.AGENT,
+    Role.CUSTOMER
   ),
   DashboardControllers.getDashboardOverview,
 );
