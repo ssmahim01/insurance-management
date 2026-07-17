@@ -321,7 +321,7 @@ const getNearbyBranches = async ({
                     type: "Point",
                     coordinates: [longitude, latitude],
                 },
-                $maxDistance: 10000, // 10 km
+                $maxDistance: 500000 // 500 km
             },
         },
     })

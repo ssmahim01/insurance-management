@@ -5,113 +5,132 @@ import { sendResponse } from "../../utils/sendResponse";
 import { BranchServices } from "./branch.service";
 
 const createPartnerBranch = catchAsync(async (req: Request, res: Response) => {
-    const result = await BranchServices.createPartnerBranch(req.body);
+  const result = await BranchServices.createPartnerBranch(req.body);
 
-    sendResponse(res, {
-        statusCode: httpStatus.CREATED,
-        success: true,
-        message: "Partner branch created successfully",
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Partner branch created successfully",
+    data: result,
+  });
 });
 
-const getAllPartnerBranches = catchAsync(async (req: Request, res: Response) => {
+const getAllPartnerBranches = catchAsync(
+  async (req: Request, res: Response) => {
     const result = await BranchServices.getAllPartnerBranches(
-        req.query as Record<string, string>
+      req.query as Record<string, string>,
     );
 
     sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Partner branches retrieved successfully",
-        data: result.data,
-        meta: result.meta,
-        stats: result.stats,
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Partner branches retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
     });
-});
+  },
+);
 
-const getAllTrashPartnerBranches = catchAsync(async (req: Request, res: Response) => {
+const getAllTrashPartnerBranches = catchAsync(
+  async (req: Request, res: Response) => {
     const result = await BranchServices.getAllTrashPartnerBranches(
-        req.query as Record<string, string>
+      req.query as Record<string, string>,
     );
 
     sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "All Trashed Partner branches retrieved successfully",
-        data: result.data,
-        meta: result.meta,
-        stats: result.stats,
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "All Trashed Partner branches retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+      stats: result.stats,
     });
-});
+  },
+);
 
-const getSinglePartnerBranch = catchAsync(async (req: Request, res: Response) => {
-    const result = await BranchServices.getSinglePartnerBranch(req.params.id as string);
+const getSinglePartnerBranch = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await BranchServices.getSinglePartnerBranch(
+      req.params.id as string,
+    );
 
     sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Partner branch retrieved successfully",
-        data: result,
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Partner branch retrieved successfully",
+      data: result,
     });
-});
+  },
+);
 
 const updatePartnerBranch = catchAsync(async (req: Request, res: Response) => {
-    const result = await BranchServices.updatePartnerBranch(
-        req.params.id as string,
-        req.body
+  const result = await BranchServices.updatePartnerBranch(
+    req.params.id as string,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner branch updated successfully",
+    data: result,
+  });
+});
+
+const softDeletePartnerBranch = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await BranchServices.softDeletePartnerBranch(
+      req.params.id as string,
     );
 
     sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Partner branch updated successfully",
-        data: result,
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Partner branch moved to trash successfully",
+      data: result,
     });
-});
-
-const softDeletePartnerBranch = catchAsync(async (req: Request, res: Response) => {
-    const result = await BranchServices.softDeletePartnerBranch(req.params.id as string);
-
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Partner branch moved to trash successfully",
-        data: result,
-    });
-});
+  },
+);
 
 const deletePartnerBranch = catchAsync(async (req: Request, res: Response) => {
-    const result = await BranchServices.deletePartnerBranch(req.params.id as string);
+  const result = await BranchServices.deletePartnerBranch(
+    req.params.id as string,
+  );
 
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Partner branch deleted successfully",
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Partner branch deleted successfully",
+    data: result,
+  });
 });
 
-
 const getNearbyBranches = catchAsync(async (req: Request, res: Response) => {
-    const { latitude, longitude, partnerIds } = req.body;
+  const { latitude, longitude, partnerIds } = req.query as {
+    latitude: string;
+    longitude: string;
+    partnerIds?: string;
+  };
 
-    const result = await BranchServices.getNearbyBranches({
-        latitude: Number(latitude),
-        longitude: Number(longitude),
-        partnerIds,
-    });
+  const result = await BranchServices.getNearbyBranches({
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+    partnerIds: partnerIds ? partnerIds.split(",") : [],
+  });
 
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Nearby branches retrieved successfully",
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Nearby branches retrieved successfully",
+    data: result,
+  });
 });
 
 const restorePartnerBranch = catchAsync(async (req: Request, res: Response) => {
-  const result = await BranchServices.restorePartnerBranch(req.params.id as string);
+  const result = await BranchServices.restorePartnerBranch(
+    req.params.id as string,
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -122,13 +141,13 @@ const restorePartnerBranch = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const BranchControllers = {
-    createPartnerBranch,
-    getAllPartnerBranches,
-    getAllTrashPartnerBranches,
-    getSinglePartnerBranch,
-    updatePartnerBranch,
-    softDeletePartnerBranch,
-    getNearbyBranches,
-    deletePartnerBranch,    
-    restorePartnerBranch
+  createPartnerBranch,
+  getAllPartnerBranches,
+  getAllTrashPartnerBranches,
+  getSinglePartnerBranch,
+  updatePartnerBranch,
+  softDeletePartnerBranch,
+  getNearbyBranches,
+  deletePartnerBranch,
+  restorePartnerBranch,
 };
