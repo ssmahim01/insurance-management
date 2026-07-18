@@ -119,3 +119,61 @@ export interface IDashboardResponse {
 
   recentCustomers: IRecentCustomer[];
 }
+
+export interface IManagerDashboardSummary {
+  totalPartners: number;
+  activePartners: number;
+  inactivePartners: number;
+
+  totalBranches: number;
+  activeBranches: number;
+  inactiveBranches: number;
+}
+
+export interface IRecentPartner {
+  _id: string;
+
+  name: string;
+
+  logo?: string;
+
+  email?: string;
+
+  phone?: string;
+
+  isActive: boolean;
+
+  createdAt: Date;
+}
+
+export interface IRecentBranch {
+  _id: string;
+
+  name: string;
+
+  partner: {
+    _id: string;
+    name: string;
+    logo?: string;
+  };
+
+  phone?: string;
+
+  email?: string;
+
+  city?: string;
+
+  address?: string;
+
+  isActive: boolean;
+
+  createdAt: Date;
+}
+
+export interface IManagerDashboardResponse {
+  summary: IManagerDashboardSummary;
+
+  recentPartners: IRecentPartner[];
+
+  recentBranches: IRecentBranch[];
+}

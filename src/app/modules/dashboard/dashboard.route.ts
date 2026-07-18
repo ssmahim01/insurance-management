@@ -16,9 +16,15 @@ router.get(
     Role.MANAGER,
     Role.AGENT_LEADER,
     Role.AGENT,
-    Role.CUSTOMER
+    Role.CUSTOMER,
   ),
   DashboardControllers.getDashboardOverview,
+);
+
+router.get(
+  "/manager",
+  checkAuth(Role.MANAGER),
+  DashboardControllers.getManagerOverview,
 );
 
 export const DashboardRoutes = router;

@@ -16,7 +16,6 @@ const getDashboardOverview = catchAsync(async (req: Request, res: Response) => {
   switch (role) {
     case Role.SUPER_ADMIN:
     case Role.ADMIN:
-    case Role.MANAGER:
       result = await DashboardServices.getAdminDashboard();
       break;
 
@@ -39,6 +38,20 @@ const getDashboardOverview = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getManagerOverview = catchAsync(async (req: Request, res: Response) => {
+  const { userId, role } = req.user;
+
+   const result = await DashboardServices.getManagerDashboard();
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Dashboard retrieved successfully",
+    data: result,
+  });
+});
+
 export const DashboardControllers = {
   getDashboardOverview,
+  getManagerOverview
 };

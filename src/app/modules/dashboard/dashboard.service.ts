@@ -22,6 +22,8 @@ import {
 } from "./dashboard.interface";
 import AppError from "../../errorHelpers/appError";
 import { InsurancePackage } from "../package/insurancePackage.model";
+import { Partner } from "../partner/partner.model";
+import { PartnerBranch } from "../branch/branch.model";
 
 const getDateRanges = () => {
   const now = new Date();
@@ -988,6 +990,115 @@ const getRevenueChart = async (creatorIds?: Types.ObjectId[]) => {
   return result.slice(-12);
 };
 
+const getRecentPartners = async () => {
+  return Partner.find({
+    isDeleted: false,
+  })
+    .select("name logo phone email isActive createdAt")
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .lean();
+};
+
+const getManagerSummary = async () => {
+  const [partnerAgg, branchAgg] = await Promise.all([
+    Partner.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalPartners: { $sum: 1 },
+          activePartners: {
+            $sum: {
+              $cond: [{ $eq: ["$isActive", true] }, 1, 0],
+            },
+          },
+          inactivePartners: {
+            $sum: {
+              $cond: [{ $eq: ["$isActive", false] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]),
+
+    PartnerBranch.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalBranches: { $sum: 1 },
+          activeBranches: {
+            $sum: {
+              $cond: [{ $eq: ["$isActive", true] }, 1, 0],
+            },
+          },
+          inactiveBranches: {
+            $sum: {
+              $cond: [{ $eq: ["$isActive", false] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  return {
+    partners: partnerAgg[0] ?? {
+      totalPartners: 0,
+      activePartners: 0,
+      inactivePartners: 0,
+    },
+
+    branches: branchAgg[0] ?? {
+      totalBranches: 0,
+      activeBranches: 0,
+      inactiveBranches: 0,
+    },
+  };
+};
+
+const getRecentBranches = async () => {
+  return PartnerBranch.find({
+    isDeleted: false,
+  })
+    .populate("partner", "name logo")
+    .sort({
+      createdAt: -1,
+    })
+    .limit(5)
+    .lean();
+};
+
+const getManagerDashboard = async () => {
+     const [summary, recentPartners, recentBranches] = await Promise.all([
+       getManagerSummary(),
+       getRecentPartners(),
+       getRecentBranches(),
+     ]);
+
+     return {
+       summary: {
+         totalPartners: summary.partners.totalPartners,
+         activePartners: summary.partners.activePartners,
+         inactivePartners: summary.partners.inactivePartners,
+         totalBranches: summary.branches.totalBranches,
+         activeBranches: summary.branches.activeBranches,
+         inactiveBranches: summary.branches.inactiveBranches,
+       },
+       recentPartners,
+       recentBranches,
+     };
+   };
+
 const getCustomerRevenueChart = async (
   customerId: Types.ObjectId,
 ) => {
@@ -1903,4 +2014,5 @@ export const DashboardServices = {
   getAgentDashboard,
   getAgentLeaderDashboard,
   getCustomerDashboard,
+  getManagerDashboard,
 };
