@@ -12,6 +12,54 @@ import { partnerBranchSearchableFields } from "./branch.constants";
 import { Types } from "mongoose";
 
 
+const RADIUS_STEPS_KM = [10, 50, 100, 250, 500];
+const FALLBACK_NEAREST_LIMIT = 10;
+const RESULTS_LIMIT_PER_STEP = 50;
+
+const PARTNER_PROJECTION = { name: 1, logo: 1, phone: 1, email: 1, website: 1 };
+
+const runGeoNear = async (
+  longitude: number,
+  latitude: number,
+  partnerIds: string[],
+  options: { maxDistanceMeters?: number; limit: number },
+) => {
+  return PartnerBranch.aggregate([
+    {
+      $geoNear: {
+        near: { type: "Point", coordinates: [longitude, latitude] },
+        distanceField: "distanceMeters",
+        spherical: true,
+        ...(options.maxDistanceMeters !== undefined && {
+          maxDistance: options.maxDistanceMeters,
+        }),
+        query: {
+          isDeleted: false,
+          isActive: true,
+          partner: { $in: partnerIds.map((id) => new Types.ObjectId(id)) },
+        },
+      },
+    },
+    { $sort: { distanceMeters: 1 } },
+    { $limit: options.limit },
+    {
+      $lookup: {
+        from: "partners",
+        localField: "partner",
+        foreignField: "_id",
+        as: "partner",
+        pipeline: [{ $project: PARTNER_PROJECTION }],
+      },
+    },
+    { $unwind: "$partner" },
+  ]);
+};
+
+const withDistanceKm = (docs: any[]) =>
+  docs.map((doc) => ({
+    ...doc,
+    distanceKm: Number((doc.distanceMeters / 1000).toFixed(2)),
+  }));
 
 const getDayBoundariesUTC = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -311,51 +359,34 @@ const getNearbyBranches = async ({
   longitude: number;
   partnerIds: string[];
 }) => {
-  const baseMatch: any = {
-    isDeleted: false,
-    isActive: true,
-  };
-
-  if (partnerIds.length > 0) {
-    baseMatch.partner = {
-      $in: partnerIds.map((id) => new Types.ObjectId(id)),
-    };
+  if (!partnerIds.length) {
+    return { data: [], radiusKm: null, expanded: false };
   }
 
-  const searchRadius = [
-    10000,   // 10 km
-    50000,   // 50 km
-    100000,  // 100 km
-    250000,  // 250 km
-    500000,  // 500 km
-  ];
+  for (const radiusKm of RADIUS_STEPS_KM) {
+    const results = await runGeoNear(longitude, latitude, partnerIds, {
+      maxDistanceMeters: radiusKm * 1000,
+      limit: RESULTS_LIMIT_PER_STEP,
+    });
 
-  for (const radius of searchRadius) {
-    const branches = await PartnerBranch.find({
-      ...baseMatch,
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [longitude, latitude],
-          },
-          $maxDistance: radius,
-        },
-      },
-    })
-      .populate("partner", "name logo phone email")
-      .limit(20);
-
-    if (branches.length > 0) {
-      return branches;
+    if (results.length > 0) {
+      return {
+        data: withDistanceKm(results),
+        radiusKm,
+        expanded: radiusKm !== RADIUS_STEPS_KM[0],
+      };
     }
   }
 
-  // Fallback: return nearest branches from anywhere
-  return await PartnerBranch.find(baseMatch)
-    .populate("partner", "name logo phone email")
-    .sort({ createdAt: -1 })
-    .limit(500);
+  const nearest = await runGeoNear(longitude, latitude, partnerIds, {
+    limit: FALLBACK_NEAREST_LIMIT,
+  });
+
+  return {
+    data: withDistanceKm(nearest),
+    radiusKm: null,
+    expanded: true,
+  };
 };
 
 export const BranchServices = {

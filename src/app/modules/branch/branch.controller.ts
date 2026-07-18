@@ -3,6 +3,7 @@ import httpStatus from "http-status-codes";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { BranchServices } from "./branch.service";
+import AppError from "../../errorHelpers/appError";
 
 const createPartnerBranch = catchAsync(async (req: Request, res: Response) => {
   const result = await BranchServices.createPartnerBranch(req.body);
@@ -107,23 +108,23 @@ const deletePartnerBranch = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getNearbyBranches = catchAsync(async (req: Request, res: Response) => {
-  const { latitude, longitude, partnerIds } = req.query as {
-    latitude: string;
-    longitude: string;
-    partnerIds?: string;
-  };
+  const { latitude, longitude, partnerIds } = req.query;
+
+  if (!latitude || !longitude || !partnerIds) {
+    throw new AppError(httpStatus.BAD_REQUEST, "latitude, longitude and partnerIds are required");
+  }
 
   const result = await BranchServices.getNearbyBranches({
     latitude: Number(latitude),
     longitude: Number(longitude),
-    partnerIds: partnerIds ? partnerIds.split(",") : [],
+    partnerIds: String(partnerIds).split(",").filter(Boolean),
   });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Nearby branches retrieved successfully",
-    data: result,
+    data: result.data,
   });
 });
 
