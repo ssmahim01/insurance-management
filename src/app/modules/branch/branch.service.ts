@@ -303,30 +303,59 @@ const restorePartnerBranch = async (id: string) => {
 };
 
 const getNearbyBranches = async ({
-    latitude,
-    longitude,
-    partnerIds,
+  latitude,
+  longitude,
+  partnerIds,
 }: {
-    latitude: number;
-    longitude: number;
-    partnerIds: string[];
+  latitude: number;
+  longitude: number;
+  partnerIds: string[];
 }) => {
-    return await PartnerBranch.find({
-        partner: { $in: partnerIds },
-        isDeleted: false,
-        isActive: true,
-        location: {
-            $near: {
-                $geometry: {
-                    type: "Point",
-                    coordinates: [longitude, latitude],
-                },
-                $maxDistance: 500000 // 500 km
-            },
+  const baseMatch: any = {
+    isDeleted: false,
+    isActive: true,
+  };
+
+  if (partnerIds.length > 0) {
+    baseMatch.partner = {
+      $in: partnerIds.map((id) => new Types.ObjectId(id)),
+    };
+  }
+
+  const searchRadius = [
+    10000,   // 10 km
+    50000,   // 50 km
+    100000,  // 100 km
+    250000,  // 250 km
+    500000,  // 500 km
+  ];
+
+  for (const radius of searchRadius) {
+    const branches = await PartnerBranch.find({
+      ...baseMatch,
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [longitude, latitude],
+          },
+          $maxDistance: radius,
         },
+      },
     })
-        .populate("partner", "name logo phone email")
-        .limit(20);
+      .populate("partner", "name logo phone email")
+      .limit(20);
+
+    if (branches.length > 0) {
+      return branches;
+    }
+  }
+
+  // Fallback: return nearest branches from anywhere
+  return await PartnerBranch.find(baseMatch)
+    .populate("partner", "name logo phone email")
+    .sort({ createdAt: -1 })
+    .limit(500);
 };
 
 export const BranchServices = {
