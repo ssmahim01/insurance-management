@@ -8,9 +8,7 @@ const createContact = async (payload: any) => {
   return await Contact.create(payload);
 };
 
-// =========================
-// GET ALL CONTACTS
-// =========================
+
 const getAllContacts = async ({
   query,
   user,

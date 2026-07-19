@@ -27,14 +27,9 @@ const staffLogin = async (
   password: string,
 ) => {
 
-console.log("phone", phone)
-console.log("Password", password)
-
   const user = await User.findOne({ phone }).select(
     "+password",
   );
-
-  console.log("User in auth ", user)
 
   if (!user) {
     throw new AppError(
@@ -42,13 +37,6 @@ console.log("Password", password)
       "User not found",
     );
   }
-
-  // if (user.role === Role.CUSTOMER) {
-  //   throw new AppError(
-  //     httpStatus.BAD_REQUEST,
-  //     "Customers must login using OTP",
-  //   );
-  // }
 
   const isPasswordMatched =
     await bcryptjs.compare(
@@ -235,6 +223,38 @@ const adminChangePassword = async (
   return null;
 };
 
+const setPassword = async (
+  decodedToken: JwtPayload,
+  password: string,
+) => {
+  const user = await User.findById(
+    decodedToken.userId,
+  ).select("+password");
+
+  if (!user) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "User not found",
+    );
+  }
+
+  if (user.password) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Password already set, use change password instead",
+    );
+  }
+
+  user.password = await bcryptjs.hash(
+    password,
+    Number(envVars.BCRYPT_SALT_ROUND),
+  );
+
+  await user.save();
+
+  return null;
+};
+
 
 export const AuthServices = {
   staffLogin,
@@ -243,4 +263,5 @@ export const AuthServices = {
   getNewAccessToken,
   changePassword,
   adminChangePassword,
+  setPassword
 };
