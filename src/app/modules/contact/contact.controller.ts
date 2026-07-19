@@ -78,6 +78,41 @@ const softDeleteContact = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteContact = catchAsync(async (req: Request, res: Response) => {
+  const result = await ContactService.deleteContact(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Contact deleted successfully",
+    data: result,
+  });
+});
+
+const getAllTrashContacts = catchAsync(async (req, res) => {
+  const result = await ContactService.getAllTrashContacts({
+    query: req.query as Record<string, string>,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Trash contacts retrieved successfully",
+    data: result?.data,
+  });
+});
+// RESTORE CONTACT
+const restoreContact = async (req: Request, res: Response) => {
+  const result = await ContactService.restoreContact(req.params.id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Message restored successfully",
+    data: result,
+  });
+};
+
 export const ContactController = {
   createContact,
   getAllContacts,
@@ -85,4 +120,8 @@ export const ContactController = {
   markAsRead,
   markAsReplied,
   softDeleteContact,
+
+  deleteContact,
+  getAllTrashContacts,
+  restoreContact
 };
