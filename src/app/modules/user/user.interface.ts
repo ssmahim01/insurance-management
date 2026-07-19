@@ -65,16 +65,14 @@ export interface IUser {
 
   address?: IAddress;
 
-  // NOMINEE INFO
-  // nominee?: INominee;
-
-  // EMPLOYEE RELATED
   salary?: string;
 
   salaryPerCustomer?: string;
 
   // SYSTEM FLAGS
   isActive?: IsActive;
+
+  hasPassword?: boolean;
 
   isVerified?: boolean;
 

@@ -215,10 +215,29 @@ const updateUser = async (
   };
 };
 
+// const getMe = async (userId: string) => {
+//   const user = await User.findById(userId).select("-password");
+
+
+
+//   return { data: user };
+// };
+
 const getMe = async (userId: string) => {
-  const user = await User.findById(userId).select("-password");
-  return { data: user };
+  const user = await User.findById(userId).select("+password");
+
+  if (!user) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "User not found",
+    );
+  }
+
+  const { password, ...rest } = user.toObject();
+
+  return { data: { ...rest, hasPassword: !!password } };
 };
+
 
 const getMyTrashAgents = async ({
   query,
