@@ -10,6 +10,7 @@ import {
   sendOtpZodSchema,
   verifyOtpZodSchema,
   staffLoginZodSchema,
+  setPasswordZodSchema,
 } from "./auth.validation";
 
 const router = express.Router();
@@ -58,6 +59,13 @@ router.post(
   "/admin/change-password",
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
   AuthControllers.adminChangePassword,
+);
+
+router.post(
+  "/set-password",
+  checkAuth(Role.CUSTOMER),
+  validateRequest(setPasswordZodSchema),
+  AuthControllers.setPassword,
 );
 
 export const authRoutes = router;

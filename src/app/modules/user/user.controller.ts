@@ -37,6 +37,8 @@ const getMe = catchAsync(
     const decodedToken = req.user as JwtPayload;
     const result = await UserServices.getMe(decodedToken.userId);
 
+console.log("", result)
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

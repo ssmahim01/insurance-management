@@ -136,6 +136,25 @@ const adminChangePassword = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const setPassword = catchAsync(
+  async (req: Request, res: Response) => {
+    const { password } = req.body;
+    const decodedToken = req.user;
+
+    await AuthServices.setPassword(
+      decodedToken as JwtPayload,
+      password,
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Password set successfully",
+      data: null,
+    });
+  },
+);
+
 export const AuthControllers = {
   staffLogin,
   sendOtp,
@@ -144,4 +163,5 @@ export const AuthControllers = {
   adminChangePassword,
   logout,
   changePassword,
+  setPassword,
 };

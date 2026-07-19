@@ -211,7 +211,7 @@ const getAllContacts = async ({
   }
 
    if (query.isReplied !== undefined) {
-    filter.isReply = query.isReplied === "true";
+    filter.isReplied = query.isReplied === "true";
     delete query.isReplied;
   }
 
