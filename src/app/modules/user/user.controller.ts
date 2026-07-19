@@ -245,18 +245,20 @@ const getAllTrashAgents = catchAsync(async (req: Request, res: Response) => {
 
 const updateProfile = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const payload = req.body;
+    const payload = req.body.data ? JSON.parse(req.body.data) : {};
 
     if (req.file) {
       payload.picture = (req.file as any).path;
     }
+
     const verifiedToken = req.user;
     const user = await UserServices.updateProfile(
       payload,
       verifiedToken as JwtPayload,
     );
+
     sendResponse(res, {
-      statusCode: httpStatus.CREATED,
+      statusCode: httpStatus.OK,
       success: true,
       message: "Profile Updated Successfully",
       data: user,

@@ -9,18 +9,18 @@ const addressSchema = z.object({
   division: z.string().optional(),
   district: z.string().optional(),
   thana: z.string().optional(),
-  union: z.string().optional(),
+  street: z.string().optional(),
 });
 
 // NOMINEE VALIDATION
-const nomineeSchema = z.object({
-  name: z.string().optional(),
-  age: z.number().min(0).optional(),
-  relationship: z.string().optional(),
-  phone: z
-    .string()
-    .optional(),
-});
+// const nomineeSchema = z.object({
+//   name: z.string().optional(),
+//   age: z.number().min(0).optional(),
+//   relationship: z.string().optional(),
+//   phone: z
+//     .string()
+//     .optional(),
+// });
 
 // CREATE USER SCHEMA
 export const createUserZodSchema = z.object({
@@ -47,6 +47,8 @@ export const createUserZodSchema = z.object({
     ])
     .optional(),
 
+  customId: z.string().optional(),
+
   picture: z.string().optional(),
 
   agentLeader: z.string().optional(),
@@ -60,7 +62,7 @@ export const createUserZodSchema = z.object({
 
   address: addressSchema.optional(),
 
-  nominee: nomineeSchema.optional(),
+  // nominee: nomineeSchema.optional(),
 });
 
 // UPDATE USER SCHEMA
@@ -103,5 +105,5 @@ export const updateUserZodSchema = z.object({
 
   address: addressSchema.optional(),
 
-  nominee: nomineeSchema.optional(),
+  // nominee: nomineeSchema.optional(),
 });

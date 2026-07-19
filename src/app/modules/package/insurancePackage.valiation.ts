@@ -53,7 +53,8 @@ export const createInsurancePackageValidationSchema = z.object({
         .array(packagePartnerDiscountSchema)
         .optional()
         .default([]),
-
+   // whether this package is a Joint (2-person) package
+    isJoint: z.boolean().optional().default(false),
     isActive: z.boolean().optional().default(true),
 });
 

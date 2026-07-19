@@ -8,7 +8,7 @@ const addressSchema = new Schema(
     division: { type: String },
     district: { type: String },
     thana: { type: String },
-    union: { type: String },
+    street: { type: String },
   },
   { _id: false },
 );
@@ -32,6 +32,13 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: true,
       trim: true,
+    },
+
+    customId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
     },
 
     phone: {
@@ -98,9 +105,9 @@ const userSchema = new Schema<IUser>(
     },
 
     // NOMINEE INFO
-    nominee: {
-      type: nomineeSchema,
-    },
+    // nominee: {
+    //   type: nomineeSchema,
+    // },
 
     // SYSTEM FLAGS
     isDeleted: {

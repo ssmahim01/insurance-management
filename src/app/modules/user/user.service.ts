@@ -9,6 +9,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants";
 import { Types } from "mongoose";
+import { generateCustomId } from "../../utils/counterHelper";
 
 // =============================================================
 // DATE FILTER HELPERS
@@ -16,6 +17,16 @@ import { Types } from "mongoose";
 // endDate only    → exact match on that calendar day (createdAt)
 // both provided   → inclusive date range
 // =============================================================
+
+const UPDATABLE_PROFILE_FIELDS = [
+  "name",
+  "email",
+  "nid",
+  "dateOfBirth",
+  "gender",
+  "address",
+  "picture",
+] as const;
 
 const getDayBoundariesUTC = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -140,7 +151,10 @@ const createUserService = async (payload: Partial<IUser>) => {
     );
   }
 
-  return await User.create({ ...payload, password });
+  // ── Generate unique customId ──
+  const customId = await generateCustomId("userCustomId", "SH");
+
+  return await User.create({ ...payload, password, customId });
 };
 
 const updateUser = async (
@@ -488,11 +502,18 @@ const updateProfile = async (
     );
   }
 
+  const safePayload: Partial<IUser> = {};
+  for (const field of UPDATABLE_PROFILE_FIELDS) {
+    if (payload[field] !== undefined) {
+      (safePayload as any)[field] = payload[field];
+    }
+  }
+
   const updatedUser = await User.findByIdAndUpdate(
     decodedToken.userId,
-    payload,
+    safePayload,
     {
-      returnDocument: "after",
+      new: true,
       runValidators: true,
     },
   );

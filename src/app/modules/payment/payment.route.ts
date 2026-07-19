@@ -5,24 +5,14 @@ import { checkAuth } from "../../middlewares/checkAuth";
 
 const router = express.Router();
 
-router.post(
-    "/init-payment/:subscriptionId",
-    PaymentController.initPayment
+router.all(
+    "/return",
+    PaymentController.paymentReturn
 );
 
-router.post(
-    "/success",
-    PaymentController.successPayment
-);
-
-router.post(
-    "/fail",
-    PaymentController.failPayment
-);
-
-router.post(
+router.all(
     "/cancel",
-    PaymentController.cancelPayment
+    PaymentController.paymentCancel
 );
 
 router.post("/validate-payment", PaymentController.validatePayment)

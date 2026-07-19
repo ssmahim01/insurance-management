@@ -102,6 +102,13 @@ const insurancePackageSchema = new Schema<IInsurancePackage>(
             default: [],
         },
 
+
+        // whether this package covers 1 person (Single) or 2 persons (Joint)
+        isJoint: {
+            type: Boolean,
+            default: false,
+        },
+
         isActive: {
             type: Boolean,
             default: true,

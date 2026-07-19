@@ -55,12 +55,14 @@ const buildQueryObj = (query: Record<string, string>) => {
   Object.assign(queryObj, buildDateFilter(startDateStr, endDateStr));
 
   if (query.isActive !== undefined) queryObj.isActive = query.isActive === "true";
+  if (query.category !== undefined) queryObj.category = query.category;
 
   delete query.startDate;
   delete query.endDate;
 
   return { queryObj, startDateStr, endDateStr };
 };
+
 
 // =============================================================
 // PARTNER STATS
@@ -72,19 +74,25 @@ const getPartnerStats = async (match: Record<string, any>) => {
     {
       $group: {
         _id: null,
-        total:    { $sum: 1 },
-        active:   { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
-        inactive: { $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] } },
+        total:              { $sum: 1 },
+        active:             { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
+        inactive:           { $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] } },
+        diagnosticHospital: { $sum: { $cond: [{ $eq: ["$category", "DIAGNOSTIC_HOSPITAL"] }, 1, 0] } },
+        pharmaceuticals:    { $sum: { $cond: [{ $eq: ["$category", "PHARMACEUTICALS"] }, 1, 0] } },
       },
     },
   ]);
 
-  return agg[0] || { total: 0, active: 0, inactive: 0 };
+  return agg[0] || {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    diagnosticHospital: 0,
+    pharmaceuticals: 0,
+  };
 };
 
-// =============================================================
 // PARTNER SERVICES
-// =============================================================
 
 const createPartner = async (
   payload: Partial<IPartner>,
@@ -133,6 +141,25 @@ const getAllPartners = async (query: Record<string, string>) => {
   const meta = await queryBuilder.getMeta();
 
   // =========================
+  // BRANCH COUNT PER PARTNER
+  // =========================
+  const partnerIds = data.map((p: any) => p._id);
+
+  const branchCounts = await PartnerBranch.aggregate([
+    { $match: { partner: { $in: partnerIds }, isDeleted: false } },
+    { $group: { _id: "$partner", count: { $sum: 1 } } },
+  ]);
+
+  const branchCountMap = new Map(
+    branchCounts.map((b) => [String(b._id), b.count]),
+  );
+
+  const dataWithBranchCount = data.map((p: any) => ({
+    ...p.toObject(),
+    branchCount: branchCountMap.get(String(p._id)) ?? 0,
+  }));
+
+  // =========================
   // STATS QUERY
   // =========================
   const statsMatch = {
@@ -142,8 +169,9 @@ const getAllPartners = async (query: Record<string, string>) => {
 
   const stats = await getPartnerStats(statsMatch);
 
-  return { data, meta, stats };
+  return { data: dataWithBranchCount, meta, stats };
 };
+
 
 const getAllTrashPartners = async (query: Record<string, string>) => {
   const { queryObj, startDateStr, endDateStr } = buildQueryObj(query);

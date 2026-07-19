@@ -2,7 +2,10 @@ import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { Subscription } from "./subscription.model";
 import {
+  IJoinMember,
+  INominee,
   ISubscription,
+  NomineeSource,
   PaymentStatus,
   SubscriptionStatus,
 } from "./subscription.interface";
@@ -37,85 +40,9 @@ const createSubscription = async (
   try {
     session.startTransaction();
 
-   let customerId: Types.ObjectId;
-let customer;
-
-// Customer purchasing for himself
-if (role === Role.CUSTOMER) {
-  const existingCustomer = await User.findById(userId);
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
-  }
-
-  customerId = existingCustomer._id;
-  customer = existingCustomer;
-}
-
-// Staff selecting existing customer
-else if (payload.customer) {
-  const existingCustomer = await User.findById(payload.customer);
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
-  }
-
-  customerId = existingCustomer._id;
-  customer = existingCustomer;
-}
-
-// Staff creating new customer
-else if (payload.customerPayload) {
-  const existingCustomer = await User.findOne({
-    phone: payload.customerPayload.phone,
-  });
-
-  if (existingCustomer) {
-    customerId = existingCustomer._id;
-    customer = existingCustomer;
-  } else {
-    const createdCustomer = await UserServices.createUserService({
-      ...payload.customerPayload,
-      role: Role.CUSTOMER,
-      createdBy: new Types.ObjectId(userId),
-    });
-
-    customerId = createdCustomer._id as Types.ObjectId;
-    customer = createdCustomer;
-  }
-}
-
-else {
-  throw new AppError(
-    httpStatus.BAD_REQUEST,
-    "Customer information is required",
-  );
-}
-
-    // Subscribe-for / beneficiary validation
-    const subscribeFor = payload.subscribeFor ?? SubscribeFor.SELF;
-
-    let beneficiary: IBeneficiary | undefined;
-
-    if (subscribeFor === SubscribeFor.OTHER) {
-      const b = payload.beneficiary;
-
-      if (!b?.name?.trim() || !b?.phone?.trim() || !b?.relationship?.trim()) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          "Beneficiary name, phone and relationship are required",
-        );
-      }
-
-      beneficiary = {
-        name: b.name.trim(),
-        phone: b.phone.trim(),
-        relationship: b.relationship.trim(),
-        ...(b.dateOfBirth && { dateOfBirth: b.dateOfBirth }),
-      };
-    }
-
-    // Package Validation
+    // Package Validation (moved up — needed to decide isJoint before
+    // validating subscribeFor/beneficiary/joinMember below, and to fail
+    // fast before creating a new customer for an invalid package)
     const insurancePackage = await InsurancePackage.findById(payload.package);
 
     if (!insurancePackage) {
@@ -143,6 +70,145 @@ else {
       );
     }
 
+    const isJoint = !!insurancePackage.isJoint;
+
+    let customerId: Types.ObjectId;
+    let customer;
+
+    // Customer purchasing for himself
+    if (role === Role.CUSTOMER) {
+      const existingCustomer = await User.findById(userId);
+
+      if (!existingCustomer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+      }
+
+      customerId = existingCustomer._id;
+      customer = existingCustomer;
+    }
+
+    // Staff selecting existing customer
+    else if (payload.customer) {
+      const existingCustomer = await User.findById(payload.customer);
+
+      if (!existingCustomer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+      }
+
+      customerId = existingCustomer._id;
+      customer = existingCustomer;
+    }
+
+    // Staff creating new customer
+    else if (payload.customerPayload) {
+      const existingCustomer = await User.findOne({
+        phone: payload.customerPayload.phone,
+      });
+
+      if (existingCustomer) {
+        customerId = existingCustomer._id;
+        customer = existingCustomer;
+      } else {
+        const createdCustomer = await UserServices.createUserService({
+          ...payload.customerPayload,
+          role: Role.CUSTOMER,
+          createdBy: new Types.ObjectId(userId),
+        });
+
+        customerId = createdCustomer._id as Types.ObjectId;
+        customer = createdCustomer;
+      }
+    }
+
+    else {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Customer information is required",
+      );
+    }
+
+    // Subscribe-for / beneficiary validation — irrelevant for Joint packages,
+    // where the primary customer is always the SELF-covered person and the
+    // 2nd covered person is captured via joinMember instead.
+    const subscribeFor = isJoint
+      ? SubscribeFor.SELF
+      : payload.subscribeFor ?? SubscribeFor.SELF;
+
+    let beneficiary: IBeneficiary | undefined;
+
+    if (!isJoint && subscribeFor === SubscribeFor.OTHER) {
+      const b = payload.beneficiary;
+
+      if (!b?.name?.trim() || !b?.phone?.trim() || !b?.relationship?.trim()) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "Beneficiary name, phone and relationship are required",
+        );
+      }
+
+      beneficiary = {
+        name: b.name.trim(),
+        phone: b.phone.trim(),
+        relationship: b.relationship.trim(),
+        ...(b.dateOfBirth && { dateOfBirth: b.dateOfBirth }),
+      };
+    }
+
+    // Join Member validation — required when the package is Joint
+    let joinMember: IJoinMember | undefined;
+
+    if (isJoint) {
+      const jm = payload.joinMember;
+
+      if (!jm?.name?.trim() || !jm?.phone?.trim() || !jm?.relationship?.trim()) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "Join member name, phone and relationship are required for a Joint package",
+        );
+      }
+
+      joinMember = {
+        name: jm.name.trim(),
+        phone: jm.phone.trim(),
+        relationship: jm.relationship.trim(),
+        ...(jm.dateOfBirth && { dateOfBirth: jm.dateOfBirth }),
+      };
+    }
+
+    // Nominee validation — always required.
+    // If Joint package and source is JOIN_MEMBER, copy from joinMember.
+    let nominee: INominee;
+
+    const wantsJoinMemberAsNominee =
+      isJoint && payload.nominee?.source === NomineeSource.JOIN_MEMBER;
+
+    if (wantsJoinMemberAsNominee) {
+      nominee = {
+        source: NomineeSource.JOIN_MEMBER,
+        name: joinMember!.name,
+        phone: joinMember!.phone,
+        relationship: joinMember!.relationship,
+        ...(joinMember!.dateOfBirth && { dateOfBirth: joinMember!.dateOfBirth }),
+      };
+    } else {
+      const n = payload.nominee;
+
+      if (!n?.name?.trim() || !n?.phone?.trim() || !n?.relationship?.trim()) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "Nominee name, phone and relationship are required",
+        );
+      }
+
+      nominee = {
+        source: NomineeSource.OTHER,
+        name: n.name.trim(),
+        phone: n.phone.trim(),
+        relationship: n.relationship.trim(),
+        ...(n.dateOfBirth && { dateOfBirth: n.dateOfBirth }),
+      };
+    }
+
     // Date Calculation
     const startDate = new Date();
 
@@ -153,33 +219,6 @@ else {
 
       endDate.setMonth(endDate.getMonth() + selectedPlan.durationInMonths);
     }
-
-    // Prevent Duplicate Active Subscription
-    // A customer can hold multiple subscriptions for the same package as
-    // long as each one covers a different person (self, or a distinct
-    // beneficiary identified by phone). We only block a true duplicate:
-    // same customer + same package + same "covered person".
-    // const duplicateQuery: Record<string, unknown> = {
-    //   customer: customerId,
-    //   package: insurancePackage._id,
-    //   isDeleted: false,
-    //   subscribeFor,
-    // };
-
-    // if (subscribeFor === SubscribeFor.OTHER && beneficiary) {
-    //   duplicateQuery["beneficiary.phone"] = beneficiary.phone;
-    // }
-
-    // const existingSubscription = await Subscription.findOne(duplicateQuery);
-
-    // if (existingSubscription) {
-    //   throw new AppError(
-    //     httpStatus.BAD_REQUEST,
-    //     subscribeFor === SubscribeFor.OTHER
-    //       ? "A subscription for this package already exists for this beneficiary"
-    //       : "Customer already has an active subscription for this package",
-    //   );
-    // }
 
     if (subscribeFor === SubscribeFor.SELF) {
       const existingSubscription = await Subscription.findOne({
@@ -232,6 +271,10 @@ else {
 
           ...(beneficiary && { beneficiary }),
 
+          ...(joinMember && { joinMember }),
+
+          nominee,
+
           createdBy: new Types.ObjectId(userId),
 
           autoRenew: payload.autoRenew ?? false,
@@ -281,6 +324,7 @@ else {
     throw error;
   }
 };
+
 
 // =========================================================
 // SHARED HELPERS (date filter + stats shape)

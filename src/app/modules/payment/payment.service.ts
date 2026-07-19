@@ -11,206 +11,52 @@ import { QueryBuilder } from "../../utils/QueryBuilder";
 import { paymentSearchableFields } from "./payment.constants";
 import { Subscription } from "../subscription/subscription.model";
 import { SubscriptionStatus } from "../subscription/subscription.interface";
+import { SurjoPayService } from "../surjoPay/surjoPay.service";
 
-
-const initPayment = async (
-    subscriptionId: any
-) => {
-
-    const payment = await PaymentModel
-        .findOne({ subscription: subscriptionId });
+const initPayment = async (subscriptionId: any) => {
+    const payment = await PaymentModel.findOne({
+        subscription: subscriptionId,
+    });
 
     if (!payment) {
         throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
     }
 
-    const subscription = await Subscription
-        .findById(subscriptionId)
+    const subscription = await Subscription.findById(subscriptionId);
 
-    const customer = await User.findById(subscription?.customer)
+    const customer = await User.findById(subscription?.customer);
 
     if (!customer) {
-        throw new AppError(httpStatus.BAD_REQUEST, "Customer not found")
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Customer not found"
+        );
     }
 
-    const sslPayload = {
+    const surjoPayPayload = {
         amount: payment.amount,
-        transactionId: payment.transactionId,
-        name: customer.name,
-        email: customer?.email,
-        phone: customer.phone,
-        address: customer?.address?.thana || "N/A",
-        city: customer?.address?.district || "N/A"
+        orderId: payment.transactionId,
+
+        customerName: customer.name,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+
+        customerAddress: customer?.address?.thana || "N/A",
+        customerCity: customer?.address?.district || "N/A",
+
+        customerCountry: "Bangladesh",
     };
 
-    const sslPayment = await SSLCommerzService.sslPaymentInit(
-        sslPayload
+    const paymentResponse = await SurjoPayService.paymentInit(
+        surjoPayPayload
     );
 
+    console.log("payment response , ", paymentResponse)
+
+
     return {
-        paymentUrl:
-            sslPayment.GatewayPageURL,
+        paymentUrl: paymentResponse.checkoutUrl,
     };
-};
-
-const successPayment = async (query: Record<string, string>) => {
-    const session = await mongoose.startSession();
-
-    try {
-        session.startTransaction();
-
-        const transactionId =
-            query.tran_id || query.transactionId;
-
-        const updatedPayment =
-            await PaymentModel.findOneAndUpdate(
-                { transactionId },
-                { status: PaymentStatus.PAID },
-                { returnDocument: "after", runValidators: true, session }
-            );
-
-        if (!updatedPayment) {
-            throw new AppError(
-                httpStatus.NOT_FOUND,
-                "Payment not found"
-            );
-        }
-
-        // Fetch subscription to get plan details for date calculation
-        const subscription = await Subscription.findById(
-            updatedPayment.subscription
-        ).session(session);
-
-        if (!subscription) {
-            throw new AppError(
-                httpStatus.NOT_FOUND,
-                "Subscription not found"
-            );
-        }
-
-        const startDate = new Date();
-
-        const endDate =
-            subscription.isLifetime || !subscription.durationInMonths
-                ? null
-                : new Date(
-                    startDate.getTime() +
-                    subscription.durationInMonths * 30 * 24 * 60 * 60 * 1000
-                );
-
-        await Subscription.findByIdAndUpdate(
-            updatedPayment.subscription,
-            {
-                status: SubscriptionStatus.ACTIVE,
-                paymentStatus: PaymentStatus.COMPLETED,
-                isActive: true,
-                startDate,
-                ...(endDate !== null && { endDate }),
-            },
-            { session }
-        );
-
-        await session.commitTransaction();
-
-        return {
-            success: true,
-            message: "Payment complete and Subscription activated",
-        };
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
-};
-
-
-const failPayment = async (query: Record<string, string>) => {
-    const session = await mongoose.startSession();
-
-    try {
-        session.startTransaction();
-
-        const transactionId =
-            query.tran_id || query.transactionId;
-
-        const updatedPayment =
-            await PaymentModel.findOneAndUpdate(
-                { transactionId },
-                { status: PaymentStatus.FAILED },
-                { returnDocument: "after", runValidators: true, session }
-            );
-
-        if (!updatedPayment) {
-            throw new AppError(
-                httpStatus.NOT_FOUND,
-                "Payment not found"
-            );
-        }
-
-        await Subscription.findByIdAndUpdate(
-            updatedPayment.subscription,
-            { status: SubscriptionStatus.FAILED },
-            { session }
-        );
-
-        await session.commitTransaction();
-
-        return {
-            success: false,
-            message: "Payment Failed",
-        };
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
-};
-
-const cancelPayment = async (query: Record<string, string>) => {
-    const session = await mongoose.startSession();
-
-    try {
-        session.startTransaction();
-
-        const transactionId =
-            query.tran_id || query.transactionId;
-
-        const updatedPayment =
-            await PaymentModel.findOneAndUpdate(
-                { transactionId },
-                { status: PaymentStatus.CANCELLED },
-                { returnDocument: "after", runValidators: true, session }
-            );
-
-        if (!updatedPayment) {
-            throw new AppError(
-                httpStatus.NOT_FOUND,
-                "Payment not found"
-            );
-        }
-
-        await Subscription.findByIdAndUpdate(
-            updatedPayment.subscription,
-            {
-                status: SubscriptionStatus.CANCELLED,
-            },
-            { session }
-        );
-
-        await session.commitTransaction();
-
-        return {
-            success: false,
-            message: "Payment Cancelled",
-        };
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
 };
 
 const updatePayment = async (id: string, payload: any) => {
@@ -248,8 +94,7 @@ const updatePayment = async (id: string, payload: any) => {
         ) {
             throw new AppError(
                 httpStatus.BAD_REQUEST,
-                `SSLCommerz refund failed: ${
-                    refundResponse.errorReason || refundResponse.status || "unknown error"
+                `SSLCommerz refund failed: ${refundResponse.errorReason || refundResponse.status || "unknown error"
                 }`
             );
         }
@@ -279,7 +124,7 @@ const updatePayment = async (id: string, payload: any) => {
                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
-                [PaymentStatus.REFUNDED]: SubscriptionStatus.CANCELLED,
+                [PaymentStatus.REFUNDED]: SubscriptionStatus.REFUNDED,
             };
             const subscriptionStatus = statusMap[payload.status];
 
@@ -393,7 +238,7 @@ const buildCustomerSubscriptionFilter = async (searchTerm: string | undefined) =
         ],
     }).select("_id");
 
-    if (matchingUsers.length === 0) return { subscription: { $in: [] } }; 
+    if (matchingUsers.length === 0) return { subscription: { $in: [] } };
     // empty array -> intentionally guarantees no false-positive match later
 
     const userIds = matchingUsers.map((u) => u._id);
@@ -535,12 +380,287 @@ const deletePayment = async (id: string) => {
     return { data: result };
 };
 
+// const verifyAndFinalizePayment = async (spOrderId: string) => {
+//     if (!spOrderId) {
+//         throw new AppError(httpStatus.BAD_REQUEST, "order_id not found");
+//     }
+
+//     const session = await mongoose.startSession();
+
+//     try {
+//         session.startTransaction();
+
+//         const verifiedData = await SurjoPayService.verifyPayment(spOrderId);
+
+//         const transactionId = verifiedData?.customer_order_id;
+
+//         if (!transactionId) {
+//             throw new AppError(
+//                 httpStatus.NOT_FOUND,
+//                 "Transaction not found in ShurjoPay verification response"
+//             );
+//         }
+
+//         const isSuccess =
+//             verifiedData?.sp_code === "1000" ||
+//             verifiedData?.bank_status === "Success";
+
+//         const isCancelled = verifiedData?.bank_status === "Cancel";
+
+//         let newPaymentStatus: PaymentStatus;
+
+//         if (isSuccess) {
+//             newPaymentStatus = PaymentStatus.PAID;
+//         } else if (isCancelled) {
+//             newPaymentStatus = PaymentStatus.CANCELLED;
+//         } else {
+//             newPaymentStatus = PaymentStatus.FAILED;
+//         }
+
+//         const updatedPayment = await PaymentModel.findOneAndUpdate(
+//             { transactionId },
+//             {
+//                 status: newPaymentStatus,
+//                 spOrderId,
+//                 paymentGatewayData: verifiedData,
+//             },
+//             { returnDocument: "after", runValidators: true, session }
+//         );
+
+//         if (!updatedPayment) {
+//             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+//         }
+
+//         if (newPaymentStatus === PaymentStatus.PAID) {
+//             const subscription = await Subscription.findById(
+//                 updatedPayment.subscription
+//             ).session(session);
+
+//             if (!subscription) {
+//                 throw new AppError(
+//                     httpStatus.NOT_FOUND,
+//                     "Subscription not found"
+//                 );
+//             }
+
+//             const startDate = new Date();
+
+//             const endDate =
+//                 subscription.isLifetime || !subscription.durationInMonths
+//                     ? null
+//                     : new Date(
+//                         startDate.getTime() +
+//                         subscription.durationInMonths * 30 * 24 * 60 * 60 * 1000
+//                     );
+
+//             await Subscription.findByIdAndUpdate(
+//                 updatedPayment.subscription,
+//                 {
+//                     status: SubscriptionStatus.ACTIVE,
+//                     paymentStatus: PaymentStatus.COMPLETED,
+//                     isActive: true,
+//                     startDate,
+//                     ...(endDate !== null && { endDate }),
+//                 },
+//                 { session }
+//             );
+//         } else if (newPaymentStatus === PaymentStatus.CANCELLED) {
+//             await Subscription.findByIdAndUpdate(
+//                 updatedPayment.subscription,
+//                 { status: SubscriptionStatus.CANCELLED },
+//                 { session }
+//             );
+//         } else {
+//             await Subscription.findByIdAndUpdate(
+//                 updatedPayment.subscription,
+//                 { status: SubscriptionStatus.FAILED },
+//                 { session }
+//             );
+//         }
+
+//         await session.commitTransaction();
+
+//         return {
+//             success: newPaymentStatus === PaymentStatus.PAID,
+//             status: newPaymentStatus,
+//             transactionId,
+//             amount: updatedPayment.amount,
+//         };
+//     } catch (error) {
+//         await session.abortTransaction();
+//         throw error;
+//     } finally {
+//         session.endSession();
+//     }
+// };
+
+const verifyAndFinalizePayment = async (spOrderId: string) => {
+    if (!spOrderId) {
+        throw new AppError(httpStatus.BAD_REQUEST, "order_id not found");
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        // ==========================================
+        // IDEMPOTENCY CHECK — process shuru howar age
+        // ==========================================
+        const existingPayment = await PaymentModel.findOne({
+            spOrderId,
+        }).session(session);
+
+        if (existingPayment && existingPayment.status === PaymentStatus.PAID) {
+            await session.commitTransaction();
+            return {
+                success: true,
+                status: existingPayment.status,
+                transactionId: existingPayment.transactionId,
+                amount: existingPayment.amount,
+            };
+        }
+
+        const verifiedData = await SurjoPayService.verifyPayment(spOrderId);
+
+        const transactionId = verifiedData?.customer_order_id;
+
+        if (!transactionId) {
+            throw new AppError(
+                httpStatus.NOT_FOUND,
+                "Transaction not found in ShurjoPay verification response"
+            );
+        }
+
+        // ==========================================
+        // AMOUNT TAMPERING CHECK
+        // ==========================================
+        const paymentDoc = await PaymentModel.findOne({
+            transactionId,
+        }).session(session);
+
+        if (!paymentDoc) {
+            throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+        }
+
+        // already PAID (transactionId diye dobara check — spOrderId na thakleo)
+        if (paymentDoc.status === PaymentStatus.PAID) {
+            await session.commitTransaction();
+            return {
+                success: true,
+                status: paymentDoc.status,
+                transactionId,
+                amount: paymentDoc.amount,
+            };
+        }
+
+        const verifiedAmount = Number(verifiedData?.amount);
+
+        if (
+            !verifiedAmount ||
+            Math.abs(verifiedAmount - paymentDoc.amount) > 0.01
+        ) {
+            throw new AppError(
+                httpStatus.BAD_REQUEST,
+                `Amount mismatch - possible tampering. Expected ${paymentDoc.amount}, got ${verifiedAmount}`
+            );
+        }
+
+        const isSuccess =
+            verifiedData?.sp_code === "1000" ||
+            verifiedData?.bank_status === "Success";
+
+        const isCancelled = verifiedData?.bank_status === "Cancel";
+
+        let newPaymentStatus: PaymentStatus;
+
+        if (isSuccess) {
+            newPaymentStatus = PaymentStatus.PAID;
+        } else if (isCancelled) {
+            newPaymentStatus = PaymentStatus.CANCELLED;
+        } else {
+            newPaymentStatus = PaymentStatus.FAILED;
+        }
+
+        const updatedPayment = await PaymentModel.findOneAndUpdate(
+            { transactionId },
+            {
+                status: newPaymentStatus,
+                spOrderId,
+                paymentGatewayData: verifiedData,
+            },
+            { returnDocument: "after", runValidators: true, session }
+        );
+
+        if (!updatedPayment) {
+            throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+        }
+
+        if (newPaymentStatus === PaymentStatus.PAID) {
+            const subscription = await Subscription.findById(
+                updatedPayment.subscription
+            ).session(session);
+
+            if (!subscription) {
+                throw new AppError(
+                    httpStatus.NOT_FOUND,
+                    "Subscription not found"
+                );
+            }
+
+            const startDate = new Date();
+
+            const endDate =
+                subscription.isLifetime || !subscription.durationInMonths
+                    ? null
+                    : new Date(
+                        startDate.getTime() +
+                        subscription.durationInMonths * 30 * 24 * 60 * 60 * 1000
+                    );
+
+            await Subscription.findByIdAndUpdate(
+                updatedPayment.subscription,
+                {
+                    status: SubscriptionStatus.ACTIVE,
+                    paymentStatus: PaymentStatus.COMPLETED,
+                    isActive: true,
+                    startDate,
+                    ...(endDate !== null && { endDate }),
+                },
+                { session }
+            );
+        } else if (newPaymentStatus === PaymentStatus.CANCELLED) {
+            await Subscription.findByIdAndUpdate(
+                updatedPayment.subscription,
+                { status: SubscriptionStatus.CANCELLED },
+                { session }
+            );
+        } else {
+            await Subscription.findByIdAndUpdate(
+                updatedPayment.subscription,
+                { status: SubscriptionStatus.FAILED },
+                { session }
+            );
+        }
+
+        await session.commitTransaction();
+
+        return {
+            success: newPaymentStatus === PaymentStatus.PAID,
+            status: newPaymentStatus,
+            transactionId,
+            amount: updatedPayment.amount,
+        };
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
+};
 
 export const PaymentService = {
     initPayment,
-    successPayment,
-    failPayment,
-    cancelPayment,
     updatePayment,
     getAllPayments,
     getSinglePayment,
@@ -548,4 +668,5 @@ export const PaymentService = {
     deletePayment,
     getAllTrashPayments,
     restorePayment,
+    verifyAndFinalizePayment
 };

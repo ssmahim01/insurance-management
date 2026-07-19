@@ -1,147 +1,12 @@
-// import httpStatus from "http-status-codes";
-// import AppError from "../../errorHelpers/appError";
-// import { QueryBuilder } from "../../utils/QueryBuilder";
-// import { Message } from "./message.model";
-// import { messageSearchableFields } from "./message.constants";
-// import { MessageType } from "./message.interface";
-
-// const createMessage = async (
-//   payload: {
-//     message: string;
-//     phone: string;
-//     type?: MessageType;
-//   },
-// ) => {
-//   const result = await Message.create(payload);
-//   return result;
-// };
-
-// const getAllMessages = async (query: Record<string, string>) => {
-//   const baseQuery = Message.find({
-//     isDeleted: false,
-//   });
-
-//   const queryBuilder = new QueryBuilder(baseQuery, query);
-
-//   const data = await queryBuilder
-//     .search(messageSearchableFields)
-//     .filter()
-//     .sort()
-//     .fields()
-//     .paginate()
-//     .build()
-
-//   const meta = await queryBuilder.getMeta();
-
-//   return {
-//     data,
-//     meta,
-//   };
-// };
-
-// // GET SINGLE MESSAGE
-// const getSingleMessage = async (id: string) => {
-//   const message = await Message.findById(id);
-
-//   if (!message) {
-//     throw new AppError(httpStatus.NOT_FOUND, "Message not found");
-//   }
-
-//   return message;
-// };
-
-// // UPDATE MESSAGE
-// const updateMessage = async (
-//   id: string,
-//   payload: Partial<{ message: string; phone: string }>,
-// ) => {
-//   const exists = await Message.findById(id);
-
-//   if (!exists) {
-//     throw new AppError(httpStatus.NOT_FOUND, "Message not found");
-//   }
-
-//   return await Message.findByIdAndUpdate(id, payload, {
-//     returnDocument: "after",
-//     runValidators: true,
-//   });
-// };
-
-// // SOFT DELETE MESSAGE
-// const softDeleteMessage = async (id: string) => {
-//   const message = await Message.findById(id);
-
-//   if (!message) {
-//     throw new AppError(httpStatus.NOT_FOUND, "Message not found");
-//   }
-
-//   return await Message.findByIdAndUpdate(
-//     id,
-//     { isDeleted: true },
-//     { returnDocument: "after" },
-//   );
-// };
-
-// // HARD DELETE MESSAGE
-// const deleteMessage = async (id: string) => {
-//   await Message.findByIdAndDelete(id);
-//   return null;
-// };
-
-
-// // GET ALL TRASH MESSAGES
-// const getAllTrashMessages = async (query: Record<string, string>) => {
-//   const baseQuery = Message.find({
-//     isDeleted: true,
-//   });
-//   const queryBuilder = new QueryBuilder(baseQuery, query);
-//   const data = await queryBuilder
-//     .search(messageSearchableFields)
-//     .filter()
-//     .sort()
-//     .fields()
-//     .paginate()
-//     .build()
-//   const meta = await queryBuilder.getMeta();
-//   return {
-//     data,
-//     meta,
-//   };
-// };
-
-// // RESTORE MESSAGE
-// const restoreMessage = async (id: string) => {
-//   const message = await Message.findById(id);
-//   if (!message) {
-//     throw new AppError(httpStatus.NOT_FOUND, "Message not found");
-//   }
-//   return await Message.findByIdAndUpdate(
-//     id,
-//     { isDeleted: false },
-//     { returnDocument: "after" },
-//   );
-// };
-
-// export const MessageService = {
-//   createMessage,
-//   getAllMessages,
-//   getSingleMessage,
-//   updateMessage,
-//   softDeleteMessage,
-//   deleteMessage,
-//   getAllTrashMessages,
-//   restoreMessage,
-// };
-
-
-
 
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { Message } from "./message.model";
-import { IMessage, MessageType } from "./message.interface";
+import { MessageType } from "./message.interface";
 import { messageSearchableFields } from "./message.constants";
+import { User } from "../user/user.model";
+
 
 const getDayBoundariesUTC = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -260,6 +125,7 @@ const getAllMessages = async (query: Record<string, string>) => {
   };
 };
 
+
 // GET SINGLE MESSAGE
 const getSingleMessage = async (id: string) => {
   const message = await Message.findById(id);
@@ -269,6 +135,76 @@ const getSingleMessage = async (id: string) => {
   }
 
   return message;
+};
+
+const getMyMessages = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  // Message model has no `user` relation — only `phone`.
+  // So resolve the logged-in user's phone first, then filter by it.
+  const currentUser = await User.findById(userId, { phone: 1 }).lean();
+
+  if (!currentUser?.phone) {
+    // No phone on file → nothing can match, return empty result safely
+    return {
+      data: [],
+      meta: { page: 1, limit: 10, total: 0, totalPage: 0 },
+      stats: { total: 0 },
+    };
+  }
+
+  const startDateStr = query["startDate"];
+  const endDateStr = query["endDate"];
+  const dateFilter = buildDateFilter(startDateStr, endDateStr);
+
+  delete query.startDate;
+  delete query.endDate;
+
+  const baseFilter: any = {
+    phone: currentUser.phone,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  // type filter
+  if (query.type !== undefined) {
+    baseFilter.type = query.type;
+    delete query.type;
+  }
+
+  const baseQuery = Message.find(baseFilter);
+
+  const queryBuilder = new QueryBuilder(baseQuery, query);
+
+  const data = await queryBuilder
+    .search(messageSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build();
+
+  const meta = await queryBuilder.getMeta();
+
+  const statsMatch: any = {
+    phone: currentUser.phone,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  };
+
+  const statsAgg = await Message.aggregate([
+    { $match: statsMatch },
+    { $group: { _id: null, total: { $sum: 1 } } },
+    { $project: { _id: 0, total: 1 } },
+  ]);
+
+  const stats = statsAgg[0] || { total: 0 };
+
+  return { data, meta, stats };
 };
 
 // UPDATE MESSAGE
@@ -283,7 +219,7 @@ const updateMessage = async (
   }
 
   return await Message.findByIdAndUpdate(id, payload, {
-   returnDocument: "after",
+    returnDocument: "after",
     runValidators: true,
   });
 };
@@ -299,7 +235,7 @@ const softDeleteMessage = async (id: string) => {
   return await Message.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    {  returnDocument: "after"},
+    { returnDocument: "after" },
   );
 };
 
@@ -363,6 +299,7 @@ const restoreMessage = async (id: string) => {
 export const MessageService = {
   createMessage,
   getAllMessages,
+  getMyMessages,
   getSingleMessage,
   updateMessage,
   softDeleteMessage,

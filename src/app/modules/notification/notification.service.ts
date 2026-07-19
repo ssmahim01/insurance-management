@@ -193,6 +193,77 @@ const getAllNotifications = async ({
   };
 };
 
+const getMyNotifications = async ({
+  query,
+  userId,
+}: {
+  query: Record<string, string>;
+  userId: string;
+}) => {
+  const startDateStr = query["startDate"];
+  const endDateStr = query["endDate"];
+  const dateFilter = buildDateFilter(startDateStr, endDateStr);
+
+  delete query.startDate;
+  delete query.endDate;
+
+  // Always scoped to the logged-in user only
+  const baseFilter: any = {
+    user: userId,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  // isRead filter (true / false)
+  if (query.isRead !== undefined) {
+    baseFilter.isRead = query.isRead === "true";
+    delete query.isRead;
+  }
+
+  // type filter
+  if (query.type !== undefined) {
+    baseFilter.type = query.type;
+    delete query.type;
+  }
+
+  const baseQuery = Notification.find(baseFilter);
+
+  const queryBuilder = new QueryBuilder(baseQuery, query);
+
+  const data = await queryBuilder
+    .search(notificationSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build();
+
+  const meta = await queryBuilder.getMeta();
+
+  const statsMatch: any = {
+    user: userId,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  };
+
+  const statsAgg = await Notification.aggregate([
+    { $match: statsMatch },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        read: { $sum: { $cond: [{ $eq: ["$isRead", true] }, 1, 0] } },
+        unread: { $sum: { $cond: [{ $eq: ["$isRead", false] }, 1, 0] } },
+      },
+    },
+    { $project: { _id: 0, total: 1, read: 1, unread: 1 } },
+  ]);
+
+  const stats = statsAgg[0] || { total: 0, read: 0, unread: 0 };
+
+  return { data, meta, stats };
+};
+
 const getSingleNotification = async (id: string) => {
   const notification = await Notification.findById(id).populate(
     "user",
@@ -379,6 +450,7 @@ const deleteNotification = async (id: string) => {
 export const NotificationService = {
   createNotification,
   getAllNotifications,
+  getMyNotifications,
   getSingleNotification,
   markAsRead,
   softDeleteNotification,

@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { IPartner } from "./partner.interface";
+import { IPartner, PartnerCategory } from "./partner.interface";
 
 const partnerSchema = new Schema<IPartner>(
   {
@@ -13,7 +13,10 @@ const partnerSchema = new Schema<IPartner>(
     logo: String,
 
     description: String,
-
+    category: {
+      type: String,
+      enum: Object.values(PartnerCategory),
+    },
     phone: String,
 
     email: String,

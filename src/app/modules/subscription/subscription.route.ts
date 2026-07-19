@@ -37,6 +37,26 @@ router.get(
   SubscriptionControllers.getAgentLeaderSubscriptions,
 );
 
+// Overview Analytics
+
+router.get(
+  "/overview/admin",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  SubscriptionControllers.getAdminOverview,
+);
+
+router.get(
+  "/overview/agent-leader",
+  checkAuth(Role.AGENT_LEADER),
+  SubscriptionControllers.getAgentLeaderOverview,
+);
+
+router.get(
+  "/overview/agent",
+  checkAuth(Role.AGENT),
+  SubscriptionControllers.getAgentOverview,
+);
+
 router.get(
   "/leader-subscriptions/:id",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN),

@@ -10,25 +10,50 @@ export enum PaymentStatus {
     REFUNDED = "REFUNDED"
 }
 
+// export interface IPayment {
+//     subscription: Types.ObjectId;
+
+//     transactionId: string;
+
+//     amount: number;
+
+//     invoiceUrl?: string;
+
+//     paymentGatewayData?: any;
+
+//     status: PaymentStatus;
+
+//     isDeleted: boolean;
+//     refundData?: any,
+//     refundRefId?: string,
+//     refundedAt?: string,
+
+//     createdAt?: Date;
+
+//     updatedAt?: Date;
+// }
+
+
 export interface IPayment {
-    subscription: Types.ObjectId;
+  subscription: Types.ObjectId;
 
-    transactionId: string;
+  transactionId: string;
 
-    amount: number;
+  spOrderId?: string;
 
-    invoiceUrl?: string;
+  amount: number;
 
-    paymentGatewayData?: any;
+  invoiceUrl?: string;
 
-    status: PaymentStatus;
+  paymentGatewayData?: any;
 
-    isDeleted: boolean;
-    refundData?: any,
-    refundRefId?: string,
-    refundedAt?: string,
+  status: PaymentStatus;
 
-    createdAt?: Date;
+  isDeleted: boolean;
 
-    updatedAt?: Date;
+  refundData?: any;
+
+  refundRefId?: string;
+
+  refundedAt?: Date;
 }
