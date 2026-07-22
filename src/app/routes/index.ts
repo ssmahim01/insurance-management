@@ -11,6 +11,7 @@ import { NotificationRoutes } from "../modules/notification/notification.route";
 import { ContactRoutes } from "../modules/contact/contact.route";
 import { ClaimRoutes } from "../modules/claim/claim.route";
 import { DashboardRoutes } from "../modules/dashboard/dashboard.route";
+import { consultationRoutes } from "../modules/consultation/consultation.route";
 
 export const router = Router();
 
@@ -62,6 +63,10 @@ const moduleRoutes = [
   {
     path: "/claim",
     route: ClaimRoutes
+  },
+  {
+    path: "/consultation",
+    route: consultationRoutes
   }
 ];
 
