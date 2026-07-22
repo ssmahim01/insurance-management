@@ -11,46 +11,54 @@ import { QueryBuilder } from "../../utils/QueryBuilder";
 import { partnerBranchSearchableFields } from "./branch.constants";
 import { Types } from "mongoose";
 
-const RADIUS_STEPS_KM = [10, 50, 100, 250, 500];
-const FALLBACK_NEAREST_LIMIT = 10;
-const RESULTS_LIMIT_PER_STEP = 50;
-
 const PARTNER_PROJECTION = { name: 1, logo: 1, phone: 1, email: 1, website: 1 };
 
 const runGeoNear = async (
   longitude: number,
   latitude: number,
   partnerIds: string[],
-  options: { maxDistanceMeters?: number; limit: number },
 ) => {
   return PartnerBranch.aggregate([
     {
       $geoNear: {
-        near: { type: "Point", coordinates: [longitude, latitude] },
+        near: {
+          type: "Point",
+          coordinates: [longitude, latitude],
+        },
         distanceField: "distanceMeters",
         spherical: true,
-        ...(options.maxDistanceMeters !== undefined && {
-          maxDistance: options.maxDistanceMeters,
-        }),
         query: {
           isDeleted: false,
           isActive: true,
-          partner: { $in: partnerIds.map((id) => new Types.ObjectId(id)) },
+          ...(partnerIds.length && {
+            partner: {
+              $in: partnerIds.map((id) => new Types.ObjectId(id)),
+            },
+          }),
         },
       },
     },
-    { $sort: { distanceMeters: 1 } },
-    { $limit: options.limit },
     {
       $lookup: {
         from: "partners",
         localField: "partner",
         foreignField: "_id",
         as: "partner",
-        pipeline: [{ $project: PARTNER_PROJECTION }],
+        pipeline: [
+          {
+            $project: PARTNER_PROJECTION,
+          },
+        ],
       },
     },
-    { $unwind: "$partner" },
+    {
+      $unwind: "$partner",
+    },
+    {
+      $sort: {
+        distanceMeters: 1,
+      },
+    },
   ]);
 };
 
@@ -351,33 +359,11 @@ const getNearbyBranches = async ({
   longitude: number;
   partnerIds: string[];
 }) => {
-  if (!partnerIds.length) {
-    return { data: [], radiusKm: null, expanded: false };
-  }
-
-  for (const radiusKm of RADIUS_STEPS_KM) {
-    const results = await runGeoNear(longitude, latitude, partnerIds, {
-      maxDistanceMeters: radiusKm * 1000,
-      limit: RESULTS_LIMIT_PER_STEP,
-    });
-
-    if (results.length > 0) {
-      return {
-        data: withDistanceKm(results),
-        radiusKm,
-        expanded: radiusKm !== RADIUS_STEPS_KM[0],
-      };
-    }
-  }
-
-  const nearest = await runGeoNear(longitude, latitude, partnerIds, {
-    limit: FALLBACK_NEAREST_LIMIT,
-  });
+  const branches: any[] = await runGeoNear(longitude, latitude, partnerIds);
 
   return {
-    data: withDistanceKm(nearest),
-    radiusKm: null,
-    expanded: true,
+    data: withDistanceKm(branches),
+    total: branches.length,
   };
 };
 

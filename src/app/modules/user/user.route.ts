@@ -24,7 +24,7 @@ router.patch(
   "/update-profile",
   checkAuth(...Object.values(Role)),
   multerUpload.single("picture"),
-  validateRequest(updateUserZodSchema),
+  // validateRequest(updateUserZodSchema),
   UserControllers.updateProfile,
 );
 

@@ -11,17 +11,11 @@ import { userSearchableFields } from "./user.constants";
 import { Types } from "mongoose";
 import { generateCustomId } from "../../utils/counterHelper";
 
-// =============================================================
-// DATE FILTER HELPERS
-// startDate only  → exact match on that calendar day (createdAt)
-// endDate only    → exact match on that calendar day (createdAt)
-// both provided   → inclusive date range
-// =============================================================
-
 const UPDATABLE_PROFILE_FIELDS = [
   "name",
   "email",
   "nid",
+  "phone",
   "dateOfBirth",
   "gender",
   "address",
