@@ -8,6 +8,8 @@ import httpStatus from "http-status-codes"
 import { SSLCommerzService } from "../sslCommerz/sslCommerz.service";
 import { sendSMS } from "../../utils/sendSms";
 import { MessageType } from "../message/message.interface";
+import { PaymentModel } from "./payment.model";
+import { Subscription } from "../subscription/subscription.model";
 
 const initPayment = catchAsync(
     async (req: Request, res: Response) => {
@@ -138,9 +140,21 @@ const paymentReturn = catchAsync(
         );
 
         if (result.success) {
-            console.log("payment result,", result)
+
+            const transactionId = result.transactionId;
+
+            const payment = await PaymentModel.findOne({ transactionId }).populate({
+                path: "subscription",
+                populate: {
+                    path: "customer",
+                    select: "phone name",
+                },
+            });
+
+            const customerPhone = (payment?.subscription as any)?.customer?.phone;
+
             await sendSMS(
-                "01793734089",
+                customerPhone,
                 `Payment successful! Your Surokkha.com subscription is now active. Login: https://surokkhahealth.com/login Thank you for choosing Surokkha!`,
                 MessageType.SUBSCRIPTION
             );
