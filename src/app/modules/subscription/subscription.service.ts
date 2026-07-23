@@ -308,7 +308,8 @@ const createSubscription = async (
 
     await sendSMS(
       customer.phone,
-      `Your payment url is ${paymentInitRes?.paymentUrl}`,
+      // `Your payment url is ${paymentInitRes?.paymentUrl}`,
+      `Thank you for choosing Surokkha.com! To activate your subscription, please complete your payment using the secure link below:\n\n${paymentInitRes?.paymentUrl}\n\nOnce your payment is successful, your subscription will be activated automatically.`,
       MessageType.SUBSCRIPTION
     );
 
@@ -1104,7 +1105,7 @@ const getCustomerSubscriptions = async ({
   }
 
   const subscriptions = await Subscription.find(filter)
-   .populate("customer", "name phone")
+    .populate("customer", "name phone")
     .populate("package", "name slug description coverageAmount")
     .populate("createdBy", "name phone role")
     .sort({ createdAt: -1 });

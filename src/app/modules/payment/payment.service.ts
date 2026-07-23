@@ -51,9 +51,6 @@ const initPayment = async (subscriptionId: any) => {
         surjoPayPayload
     );
 
-    console.log("payment response , ", paymentResponse)
-
-
     return {
         paymentUrl: paymentResponse.checkoutUrl,
     };

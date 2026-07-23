@@ -85,7 +85,8 @@ const sendOtp = async (phone: string) => {
 
   await sendSMS(
     phone,
-    `Your OTP is ${otp}`,
+    // `Your OTP is ${otp}`,
+     ` Your One-Time Password (OTP) is: ${otp}. This code is valid for 2 minutes. Please do not share it with anyone.`,
     MessageType.OTP
   );
 

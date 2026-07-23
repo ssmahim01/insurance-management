@@ -1,3 +1,4 @@
+
 // import { Request, Response } from "express";
 // import httpStatus from "http-status-codes";
 // import { catchAsync } from "../../utils/catchAsync";
@@ -21,7 +22,7 @@
 //   async (req: Request, res: Response) => {
 //     const result = await ConsultationServices.updateConsultationStatus(
 //       req.params.id as string,
-//       req.body.status,
+//       req.body,
 //     );
 
 //     sendResponse(res, {
@@ -89,6 +90,7 @@
 // };
 
 
+
 import { Request, Response } from "express";
 import httpStatus from "http-status-codes";
 import { catchAsync } from "../../utils/catchAsync";
@@ -123,6 +125,21 @@ const updateConsultationStatus = catchAsync(
     });
   },
 );
+
+const getPrescription = catchAsync(async (req: Request, res: Response) => {
+  const result = await ConsultationServices.fetchPrescription(
+    req.params.id as string,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result.ready
+      ? "Prescription retrieved successfully"
+      : "Prescription is not ready yet, please try again shortly",
+    data: result,
+  });
+});
 
 const getMyConsultations = catchAsync(async (req: Request, res: Response) => {
   const query = req.query;
@@ -174,6 +191,7 @@ const getSingleConsultation = catchAsync(
 export const ConsultationControllers = {
   initiateConsultation,
   updateConsultationStatus,
+  getPrescription,
   getMyConsultations,
   getMyConsultationCount,
   getSingleConsultation,
