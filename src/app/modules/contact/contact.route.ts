@@ -14,6 +14,13 @@ router.get(
 );
 
 router.get(
+  "/all-trash-contacts",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  ContactController.getAllTrashContacts,
+);
+
+
+router.get(
   "/:id",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
   ContactController.getSingleContact,
@@ -35,6 +42,17 @@ router.delete(
   "/:id",
   checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
   ContactController.softDeleteContact,
+);
+router.post(
+  "/restore/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  ContactController.restoreContact,
+);
+
+router.delete(
+  "/permanent/:id",
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+  ContactController.deleteContact,
 );
 
 export const ContactRoutes = router;

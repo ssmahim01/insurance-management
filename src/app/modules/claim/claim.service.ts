@@ -213,7 +213,6 @@ const getAllTrashClaims = async ({
   return { data: claims, meta, stats };
 };
 
-// GET SINGLE CLAIM
 const getSingleClaim = async (id: string) => {
   const claim = await Claim.findById(id)
     .populate("customer", "name phone role")
