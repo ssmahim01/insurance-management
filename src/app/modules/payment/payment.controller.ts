@@ -6,6 +6,8 @@ import { envVars } from "../../config/env";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes"
 import { SSLCommerzService } from "../sslCommerz/sslCommerz.service";
+import { sendSMS } from "../../utils/sendSms";
+import { MessageType } from "../message/message.interface";
 
 const initPayment = catchAsync(
     async (req: Request, res: Response) => {
@@ -51,7 +53,7 @@ const getSinglePayment = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updatePayment = catchAsync(async (req: Request, res: Response) => {
-   console.log(req.params.id, req.body);
+    console.log(req.params.id, req.body);
     const result = await PaymentService.updatePayment(
         req.params.id as string,
         req.body
@@ -136,6 +138,13 @@ const paymentReturn = catchAsync(
         );
 
         if (result.success) {
+            console.log("payment result,", result)
+            await sendSMS(
+                "01793734089",
+                `Payment successful! Your Surokkha.com subscription is now active. Login: https://surokkhahealth.com/login Thank you for choosing Surokkha!`,
+                MessageType.SUBSCRIPTION
+            );
+
             return res.redirect(
                 `${envVars.SSL.SSL_SUCCESS_FRONTEND_URL}?transactionId=${result.transactionId}&amount=${result.amount}&status=${result.status}`
             );
@@ -163,15 +172,15 @@ const paymentCancel = catchAsync(
 );
 
 export const PaymentController = {
-    initPayment,     
-    validatePayment, 
-    getAllPayments,   
-    getSinglePayment, 
-    updatePayment,  
-    softDeletePayment,   
-    deletePayment,   
+    initPayment,
+    validatePayment,
+    getAllPayments,
+    getSinglePayment,
+    updatePayment,
+    softDeletePayment,
+    deletePayment,
     getAllTrashPayments,
-    restorePayment,  
+    restorePayment,
     paymentCancel,
     paymentReturn
 };

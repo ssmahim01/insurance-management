@@ -20,6 +20,12 @@ router.get(
 );
 
 router.get(
+  "/:id/prescription",
+  checkAuth(Role.CUSTOMER),
+  ConsultationControllers.getPrescription,
+);
+
+router.get(
   "/my-consultations/count",
   checkAuth(Role.CUSTOMER),
   ConsultationControllers.getMyConsultationCount,
