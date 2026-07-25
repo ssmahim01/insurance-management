@@ -56,6 +56,95 @@ const initPayment = async (subscriptionId: any) => {
     };
 };
 
+// const updatePayment = async (id: string, payload: any) => {
+//     const existingPayment = await PaymentModel.findById(id);
+
+//     if (!existingPayment) {
+//         throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+//     }
+
+//     // Trigger the actual SSLCommerz refund BEFORE any DB write.
+//     // We only mark our DB as REFUNDED once the gateway confirms it.
+//     if (
+//         payload.status === PaymentStatus.REFUNDED &&
+//         existingPayment.status !== PaymentStatus.REFUNDED
+//     ) {
+//         const bankTranId = (existingPayment as any).paymentGatewayData?.bank_tran_id;
+
+//         if (!bankTranId) {
+//             throw new AppError(
+//                 httpStatus.BAD_REQUEST,
+//                 "Cannot refund: bank transaction id not found. This payment may not have been validated by SSLCommerz yet."
+//             );
+//         }
+
+//         const refundResponse = await SSLCommerzService.initiateRefund({
+//             bank_tran_id: bankTranId,
+//             refund_amount: existingPayment.amount,
+//             refund_remarks: payload.refundRemarks || "Refund processed by admin",
+//         });
+
+//         // SSLCommerz replies "success" (instant) or "processing" (queued, poll later)
+//         if (
+//             refundResponse.status !== "success" &&
+//             refundResponse.status !== "processing"
+//         ) {
+//             throw new AppError(
+//                 httpStatus.BAD_REQUEST,
+//                 `SSLCommerz refund failed: ${refundResponse.errorReason || refundResponse.status || "unknown error"
+//                 }`
+//             );
+//         }
+
+//         // stash the gateway's refund response on the payment doc
+//         payload.refundData = refundResponse;
+//         payload.refundRefId = refundResponse.refund_ref_id;
+//         payload.refundedAt = new Date();
+//     }
+
+//     const session = await mongoose.startSession();
+
+//     try {
+//         session.startTransaction();
+
+//         const updatedPayment = await PaymentModel.findByIdAndUpdate(
+//             id,
+//             payload,
+//             { returnDocument: "after", runValidators: true, session }
+//         );
+//         if (!updatedPayment) {
+//             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+//         }
+
+//         if (payload.status) {
+//             const statusMap: Record<string, string> = {
+//                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
+//                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
+//                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
+//                 [PaymentStatus.REFUNDED]: SubscriptionStatus.REFUNDED,
+//             };
+//             const subscriptionStatus = statusMap[payload.status];
+
+//             if (subscriptionStatus) {
+//                 await Subscription.findByIdAndUpdate(
+//                     updatedPayment.subscription,
+//                     { status: subscriptionStatus },
+//                     { session }
+//                 );
+//             }
+//         }
+
+//         await session.commitTransaction();
+//         return { data: updatedPayment };
+
+//     } catch (error) {
+//         await session.abortTransaction();
+//         throw error;
+//     } finally {
+//         session.endSession();
+//     }
+// };
+
 const updatePayment = async (id: string, payload: any) => {
     const existingPayment = await PaymentModel.findById(id);
 
@@ -63,43 +152,15 @@ const updatePayment = async (id: string, payload: any) => {
         throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
     }
 
-    // Trigger the actual SSLCommerz refund BEFORE any DB write.
-    // We only mark our DB as REFUNDED once the gateway confirms it.
-    if (
-        payload.status === PaymentStatus.REFUNDED &&
-        existingPayment.status !== PaymentStatus.REFUNDED
-    ) {
-        const bankTranId = (existingPayment as any).paymentGatewayData?.bank_tran_id;
-
-        if (!bankTranId) {
-            throw new AppError(
-                httpStatus.BAD_REQUEST,
-                "Cannot refund: bank transaction id not found. This payment may not have been validated by SSLCommerz yet."
-            );
-        }
-
-        const refundResponse = await SSLCommerzService.initiateRefund({
-            bank_tran_id: bankTranId,
-            refund_amount: existingPayment.amount,
-            refund_remarks: payload.refundRemarks || "Refund processed by admin",
-        });
-
-        // SSLCommerz replies "success" (instant) or "processing" (queued, poll later)
-        if (
-            refundResponse.status !== "success" &&
-            refundResponse.status !== "processing"
-        ) {
-            throw new AppError(
-                httpStatus.BAD_REQUEST,
-                `SSLCommerz refund failed: ${refundResponse.errorReason || refundResponse.status || "unknown error"
-                }`
-            );
-        }
-
-        // stash the gateway's refund response on the payment doc
-        payload.refundData = refundResponse;
-        payload.refundRefId = refundResponse.refund_ref_id;
-        payload.refundedAt = new Date();
+    // Generic status-update guard: REFUNDED can't be set through this
+    // endpoint anymore. Refunds are handled by dedicated flows:
+    //   - SurjoPay -> requestSurjoPayRefund() sets REFUND_PENDING,
+    //     the reconciliation cron confirms REFUNDED later.
+    if (payload.status === PaymentStatus.REFUNDED) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "REFUNDED status can't be set directly. Use the request-refund endpoint instead."
+        );
     }
 
     const session = await mongoose.startSession();
@@ -121,7 +182,6 @@ const updatePayment = async (id: string, payload: any) => {
                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
-                [PaymentStatus.REFUNDED]: SubscriptionStatus.REFUNDED,
             };
             const subscriptionStatus = statusMap[payload.status];
 
@@ -144,7 +204,6 @@ const updatePayment = async (id: string, payload: any) => {
         session.endSession();
     }
 };
-
 
 const getPaymentDayBoundariesUTC = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -542,9 +601,44 @@ const verifyAndFinalizePayment = async (spOrderId: string) => {
     }
 };
 
+const requestSurjoPayRefund = async (id: string, reason?: string) => {
+    const payment = await PaymentModel.findById(id);
+
+    if (!payment) {
+        throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+    }
+
+    if (!payment.spOrderId) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "This payment was not processed via SurjoPay"
+        );
+    }
+
+    if (payment.status !== PaymentStatus.PAID) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Only PAID payments are eligible for refund. Current status: ${payment.status}`
+        );
+    }
+
+    const updated = await PaymentModel.findByIdAndUpdate(
+        id,
+        {
+            status: PaymentStatus.REFUND_PENDING,
+            refundReason: reason,
+            refundRequestedAt: new Date(),
+        },
+        { returnDocument: "after", runValidators: true }
+    );
+
+    return { data: updated };
+};
+
 export const PaymentService = {
     initPayment,
     updatePayment,
+    requestSurjoPayRefund,
     getAllPayments,
     getSinglePayment,
     softDeletePayment,

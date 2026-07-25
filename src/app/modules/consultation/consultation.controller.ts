@@ -1,3 +1,4 @@
+// Working version patient to doctor 
 
 // import { Request, Response } from "express";
 // import httpStatus from "http-status-codes";
@@ -33,6 +34,21 @@
 //     });
 //   },
 // );
+
+// const getPrescription = catchAsync(async (req: Request, res: Response) => {
+//   const result = await ConsultationServices.fetchPrescription(
+//     req.params.id as string,
+//   );
+
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: result.ready
+//       ? "Prescription retrieved successfully"
+//       : "Prescription is not ready yet, please try again shortly",
+//     data: result,
+//   });
+// });
 
 // const getMyConsultations = catchAsync(async (req: Request, res: Response) => {
 //   const query = req.query;
@@ -84,12 +100,14 @@
 // export const ConsultationControllers = {
 //   initiateConsultation,
 //   updateConsultationStatus,
+//   getPrescription,
 //   getMyConsultations,
 //   getMyConsultationCount,
 //   getSingleConsultation,
 // };
 
 
+// doctor to patient 
 
 import { Request, Response } from "express";
 import httpStatus from "http-status-codes";
@@ -137,6 +155,21 @@ const getPrescription = catchAsync(async (req: Request, res: Response) => {
     message: result.ready
       ? "Prescription retrieved successfully"
       : "Prescription is not ready yet, please try again shortly",
+    data: result,
+  });
+});
+
+const getActiveConsultation = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+
+  const result = await ConsultationServices.getActiveConsultationForSocket(userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result
+      ? "Active consultation found"
+      : "No active consultation to listen for",
     data: result,
   });
 });
@@ -192,6 +225,7 @@ export const ConsultationControllers = {
   initiateConsultation,
   updateConsultationStatus,
   getPrescription,
+  getActiveConsultation,
   getMyConsultations,
   getMyConsultationCount,
   getSingleConsultation,
