@@ -19,7 +19,6 @@ router.get(
   ConsultationControllers.getMyConsultations,
 );
 
-// new addition for doctor to patient 
 router.get(
   "/active",
   checkAuth(Role.CUSTOMER),
