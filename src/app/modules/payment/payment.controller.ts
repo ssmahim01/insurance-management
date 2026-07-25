@@ -185,6 +185,20 @@ const paymentCancel = catchAsync(
     }
 );
 
+const requestSurjoPayRefund = catchAsync(async (req: Request, res: Response) => {
+    const result = await PaymentService.requestSurjoPayRefund(
+        req.params.id as string,
+        req.body.reason
+    );
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Refund requested. Approve it on the SurjoPay merchant portal — status updates automatically once confirmed.",
+        data: result.data,
+    });
+});
+
 export const PaymentController = {
     initPayment,
     validatePayment,
@@ -196,5 +210,6 @@ export const PaymentController = {
     getAllTrashPayments,
     restorePayment,
     paymentCancel,
-    paymentReturn
+    paymentReturn,
+    requestSurjoPayRefund
 };

@@ -5,6 +5,7 @@ import app from "./app";
 import { envVars } from "./app/config/env";
 import { seedAdmin } from "./app/utils/seedAdmin";
 import { registerSubscriptionExpireTracker } from "./app/utils/subscriptionExpireTracker";
+import { startSurjoPayRefundCron } from "./app/utils/surjopayRefundTracker";
 let server: Server;
 
 const startServer = async () => {
@@ -25,7 +26,7 @@ const startServer = async () => {
 startServer();
 
 registerSubscriptionExpireTracker();
-
+startSurjoPayRefundCron();
 
 process.on("unhandledRejection", (err) => {
   console.log("uncaught error detected.... server shutting down", err);

@@ -113,6 +113,13 @@ const paymentSchema = new Schema<IPayment>(
       type: String,
     },
 
+    refundReason: {
+      type: String
+    },
+    refundRequestedAt: {
+      type: Date,
+    },
+
     refundedAt: {
       type: Date,
     },

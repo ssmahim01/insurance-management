@@ -119,9 +119,6 @@ const verifyPayment = async (spOrderId: string) => {
       ? response.data[0]
       : response.data;
 
-    // DB write removed from here — verifyAndFinalizePayment handles it
-    // inside a single transaction to avoid double-write / partial-commit issues
-
     return paymentData;
     return paymentData;
   } catch (error: any) {

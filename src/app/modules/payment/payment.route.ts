@@ -16,7 +16,11 @@ router.all(
 );
 
 router.post("/validate-payment", PaymentController.validatePayment)
-
+router.patch(
+    "/:id/request-refund",
+    checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+    PaymentController.requestSurjoPayRefund
+);
 router.get("/all-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.getAllPayments);
 router.get("/all-trash-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.getAllTrashPayments);
 router.get("/:id", checkAuth(Role.ADMIN, Role.CUSTOMER, Role.SUPER_ADMIN), PaymentController.getSinglePayment);
