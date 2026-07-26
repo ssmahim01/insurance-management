@@ -1,7 +1,9 @@
-
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
-import { ConsultationStatus } from "./consultation.interface";
+import {
+  ConsultationStatus,
+  PrescriptionStatus,
+} from "./consultation.interface";
 import { consultationSearchableFields } from "./consultation.constants";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { User } from "../user/user.model";
@@ -10,11 +12,222 @@ import { Consultation } from "./consultation.model";
 import { SubscriptionStatus } from "../subscription/subscription.interface";
 import { ZaynaxApi } from "../zaynax/zaynax.service";
 
-/** 
- * Polls Zaynax until a doctor is assigned to the booking, or times out.
- * Per Zaynax's docs, doctor assignment happens asynchronously via a queue —
- * booking details won't have doctorID/doctorInfo populated immediately.
- */
+const CALLBACK_ELIGIBLE_STATUSES = [
+  ConsultationStatus.PAID,
+  ConsultationStatus.RINGING,
+  ConsultationStatus.REJECTED,
+  ConsultationStatus.TIMEOUT,
+];
+
+const LIVE_CALL_STATUSES = [
+  ConsultationStatus.ACCEPTED,
+  ConsultationStatus.RINGING,
+];
+const MAX_CALL_DURATION_MS = 60 * 60 * 1000;
+const computeAndPersistDuration = async (consultation: any) => {
+  if (consultation.callStartedAt && consultation.callEndedAt) {
+    const ms =
+      consultation.callEndedAt.getTime() - consultation.callStartedAt.getTime();
+    consultation.callDurationSeconds = Math.max(0, Math.round(ms / 1000));
+  }
+};
+
+interface IUpdateConsultationStatusPayload {
+  status: ConsultationStatus;
+  callStartedAt?: string;
+  callEndedAt?: string;
+  prescriptionUrl?: string;
+}
+
+const updateConsultationStatus = async (
+  id: string,
+  payload: IUpdateConsultationStatusPayload,
+) => {
+  const consultation = await Consultation.findById(id).select("+zaynaxToken");
+
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
+  }
+  const alreadyTerminal =
+    consultation.status === ConsultationStatus.COMPLETED ||
+    consultation.status === ConsultationStatus.CANCELLED;
+
+  if (alreadyTerminal && payload.status === ConsultationStatus.COMPLETED) {
+    return consultation;
+  }
+
+  consultation.status = payload.status;
+  if (payload.callStartedAt)
+    consultation.callStartedAt = new Date(payload.callStartedAt);
+  if (payload.callEndedAt)
+    consultation.callEndedAt = new Date(payload.callEndedAt);
+  if (payload.prescriptionUrl) {
+    consultation.prescriptionUrl = payload.prescriptionUrl;
+    consultation.prescriptionStatus = PrescriptionStatus.READY;
+  }
+
+  await computeAndPersistDuration(consultation);
+
+  if (payload.status === ConsultationStatus.COMPLETED) {
+    if (!consultation.callEndedAt) {
+      consultation.callEndedAt = new Date();
+      await computeAndPersistDuration(consultation);
+    }
+    if (!consultation.prescriptionUrl) {
+      consultation.prescriptionStatus = PrescriptionStatus.PENDING;
+    }
+  }
+
+  await consultation.save();
+  if (
+    payload.status === ConsultationStatus.COMPLETED &&
+    consultation.prescriptionStatus === PrescriptionStatus.PENDING
+  ) {
+    schedulePrescriptionPoll(String(consultation._id));
+  }
+
+  return consultation;
+};
+
+const PRESCRIPTION_MAX_ATTEMPTS = 8;
+const PRESCRIPTION_BACKOFF_MS = [
+  10_000, 20_000, 30_000, 60_000, 120_000, 180_000, 300_000, 300_000,
+];
+
+const schedulePrescriptionPoll = (consultationId: string, attempt = 1) => {
+  const delay =
+    PRESCRIPTION_BACKOFF_MS[
+      Math.min(attempt - 1, PRESCRIPTION_BACKOFF_MS.length - 1)
+    ];
+  setTimeout(() => {
+    attemptPrescriptionSync(consultationId, attempt).catch((err) =>
+      console.error(
+        "[prescriptionPoll] unexpected failure:",
+        consultationId,
+        err,
+      ),
+    );
+  }, delay);
+};
+
+const attemptPrescriptionSync = async (
+  consultationId: string,
+  attempt: number,
+) => {
+  const consultation =
+    await Consultation.findById(consultationId).select("+zaynaxToken");
+
+  if (
+    !consultation ||
+    consultation.prescriptionStatus === PrescriptionStatus.READY
+  ) {
+    return;
+  }
+
+  if (!consultation.zaynaxToken || !consultation.zaynaxBookingId) {
+    consultation.prescriptionStatus = PrescriptionStatus.FAILED;
+    await consultation.save();
+    return;
+  }
+
+  consultation.prescriptionAttempts = attempt;
+  consultation.lastPrescriptionCheckAt = new Date();
+
+  try {
+    const details = await ZaynaxApi.getBookingDetails(
+      consultation.zaynaxToken,
+      consultation.zaynaxBookingId,
+    );
+    const prescriptionUrl = ZaynaxApi.extractPrescriptionUrl(
+      details.prescriptions,
+    );
+
+    if (prescriptionUrl) {
+      consultation.prescriptionUrl = prescriptionUrl;
+      consultation.prescriptionStatus = PrescriptionStatus.READY;
+      consultation.zaynaxToken = undefined;
+      await consultation.save();
+      return;
+    }
+  } catch (err) {
+    console.error(
+      "[prescriptionPoll] Zaynax call failed:",
+      consultationId,
+      err,
+    );
+  }
+
+  if (attempt >= PRESCRIPTION_MAX_ATTEMPTS) {
+    consultation.prescriptionStatus = PrescriptionStatus.FAILED;
+    await consultation.save();
+    return;
+  }
+
+  await consultation.save();
+  schedulePrescriptionPoll(consultationId, attempt + 1);
+};
+
+const reconcileStaleConsultations = async () => {
+  const cutoff = new Date(Date.now() - MAX_CALL_DURATION_MS);
+
+  const stale = await Consultation.find({
+    status: { $in: LIVE_CALL_STATUSES },
+    callStartedAt: { $lte: cutoff },
+    isDeleted: false,
+  }).select("+zaynaxToken");
+
+  for (const consultation of stale) {
+    consultation.status = ConsultationStatus.COMPLETED;
+    consultation.callEndedAt = consultation.callEndedAt ?? new Date();
+    await computeAndPersistDuration(consultation);
+    if (!consultation.prescriptionUrl) {
+      consultation.prescriptionStatus = PrescriptionStatus.PENDING;
+    }
+    await consultation.save();
+
+    if (consultation.prescriptionStatus === PrescriptionStatus.PENDING) {
+      schedulePrescriptionPoll(String(consultation._id));
+    }
+  }
+
+  return { reconciled: stale.length };
+};
+
+const fetchPrescription = async (id: string) => {
+  const consultation = await Consultation.findById(id).select("+zaynaxToken");
+
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
+  }
+
+  if (consultation.prescriptionUrl) {
+    return { prescriptionUrl: consultation.prescriptionUrl, ready: true };
+  }
+
+  if (!consultation.zaynaxToken || !consultation.zaynaxBookingId) {
+    return { prescriptionUrl: null, ready: false };
+  }
+
+  const details = await ZaynaxApi.getBookingDetails(
+    consultation.zaynaxToken,
+    consultation.zaynaxBookingId,
+  );
+  const prescriptionUrl = ZaynaxApi.extractPrescriptionUrl(
+    details.prescriptions,
+  );
+
+  if (!prescriptionUrl) {
+    return { prescriptionUrl: null, ready: false };
+  }
+
+  consultation.prescriptionUrl = prescriptionUrl;
+  consultation.prescriptionStatus = PrescriptionStatus.READY;
+  consultation.zaynaxToken = undefined;
+  await consultation.save();
+
+  return { prescriptionUrl, ready: true };
+};
+
 const waitForDoctorAssignment = async (
   token: string,
   bookingId: string,
@@ -90,7 +303,8 @@ const initiateConsultation = async (userId: string) => {
         {
           firstName: customer.name?.split(" ")[0] ?? customer.name,
           lastName: customer.name?.split(" ").slice(1).join(" ") || "-",
-          gender: genderMap[customer.gender as keyof typeof genderMap] ?? "Other",
+          gender:
+            genderMap[customer.gender as keyof typeof genderMap] ?? "Other",
           mobileNumber: customer.phone,
         },
       ],
@@ -151,13 +365,20 @@ const initiateConsultation = async (userId: string) => {
     // Pay from the shared package balance — this is the point of truth for
     // usage count, since Zaynax's own pool balance is deducted here
     // regardless of whether the doctor later accepts or rejects the call.
-    const paid = await ZaynaxApi.payByPackage(patientToken, booking.id, booking.orderType);
+    const paid = await ZaynaxApi.payByPackage(
+      patientToken,
+      booking.id,
+      booking.orderType,
+    );
 
     if (!paid) {
       consultation.status = ConsultationStatus.FAILED;
       consultation.failureReason = "Zaynax payment/by-package returned false";
       await consultation.save();
-      throw new AppError(httpStatus.BAD_GATEWAY, "Could not start consultation, please retry");
+      throw new AppError(
+        httpStatus.BAD_GATEWAY,
+        "Could not start consultation, please retry",
+      );
     }
 
     consultation.status = ConsultationStatus.PAID;
@@ -165,7 +386,12 @@ const initiateConsultation = async (userId: string) => {
 
     // Get booking/doctor details — Zaynax assigns doctors asynchronously via
     // a queue, so poll until doctorID/doctorInfo show up (or time out).
-    const details = await waitForDoctorAssignment(patientToken, booking.id, 20, 5000);
+    const details = await waitForDoctorAssignment(
+      patientToken,
+      booking.id,
+      20,
+      5000,
+    );
 
     consultation.doctorId = details.doctorID;
     consultation.doctorName = `${details.doctorInfo.firstName.en} ${details.doctorInfo.lastName.en}`;
@@ -205,69 +431,69 @@ interface IUpdateConsultationStatusPayload {
  * COMPLETED) / prescriptionUrl (if the caller already has it).
  * Doesn't affect any counter — usage is already counted at PAID.
  */
-const updateConsultationStatus = async (
-  id: string,
-  payload: IUpdateConsultationStatusPayload,
-) => {
-  const consultation = await Consultation.findById(id);
+// const updateConsultationStatus = async (
+//   id: string,
+//   payload: IUpdateConsultationStatusPayload,
+// ) => {
+//   const consultation = await Consultation.findById(id);
 
-  if (!consultation) {
-    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
-  }
+//   if (!consultation) {
+//     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
+//   }
 
-  consultation.status = payload.status;
-  if (payload.callStartedAt) consultation.callStartedAt = new Date(payload.callStartedAt);
-  if (payload.callEndedAt) consultation.callEndedAt = new Date(payload.callEndedAt);
-  if (payload.prescriptionUrl) consultation.prescriptionUrl = payload.prescriptionUrl;
+//   consultation.status = payload.status;
+//   if (payload.callStartedAt) consultation.callStartedAt = new Date(payload.callStartedAt);
+//   if (payload.callEndedAt) consultation.callEndedAt = new Date(payload.callEndedAt);
+//   if (payload.prescriptionUrl) consultation.prescriptionUrl = payload.prescriptionUrl;
 
-  await consultation.save();
+//   await consultation.save();
 
-  return consultation;
-};
+//   return consultation;
+// };
 
-const fetchPrescription = async (id: string) => {
-  const consultation = await Consultation.findById(id).select("+zaynaxToken");
+// const fetchPrescription = async (id: string) => {
+//   const consultation = await Consultation.findById(id).select("+zaynaxToken");
 
-  if (!consultation) {
-    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
-  }
+//   if (!consultation) {
+//     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
+//   }
 
-  if (consultation.prescriptionUrl) {
-    return { prescriptionUrl: consultation.prescriptionUrl, ready: true };
-  }
+//   if (consultation.prescriptionUrl) {
+//     return { prescriptionUrl: consultation.prescriptionUrl, ready: true };
+//   }
 
-  if (!consultation.zaynaxToken || !consultation.zaynaxBookingId) {
-    return { prescriptionUrl: null, ready: false };
-  }
+//   if (!consultation.zaynaxToken || !consultation.zaynaxBookingId) {
+//     return { prescriptionUrl: null, ready: false };
+//   }
 
-  const details = await ZaynaxApi.getBookingDetails(
-    consultation.zaynaxToken,
-    consultation.zaynaxBookingId,
-  );
+//   const details = await ZaynaxApi.getBookingDetails(
+//     consultation.zaynaxToken,
+//     consultation.zaynaxBookingId,
+//   );
 
-  const prescriptionUrl = ZaynaxApi.extractPrescriptionUrl(details.prescriptions);
+//   const prescriptionUrl = ZaynaxApi.extractPrescriptionUrl(details.prescriptions);
 
-  if (!prescriptionUrl) {
-    return { prescriptionUrl: null, ready: false };
-  }
+//   if (!prescriptionUrl) {
+//     return { prescriptionUrl: null, ready: false };
+//   }
 
-  consultation.prescriptionUrl = prescriptionUrl;
-  consultation.zaynaxToken = undefined; // no longer needed — clear it
-  await consultation.save();
+//   consultation.prescriptionUrl = prescriptionUrl;
+//   consultation.zaynaxToken = undefined; // no longer needed — clear it
+//   await consultation.save();
 
-  return { prescriptionUrl, ready: true };
-};
+//   return { prescriptionUrl, ready: true };
+// };
 
 // Statuses where a doctor callback could still realistically arrive:
 // payment succeeded (so the booking is real) but the call hasn't
 // concluded either way yet. COMPLETED/CANCELLED/FAILED/POOL_EXHAUSTED are
 // terminal — no callback is expected once there.
-const CALLBACK_ELIGIBLE_STATUSES = [
-  ConsultationStatus.PAID,
-  ConsultationStatus.RINGING,
-  ConsultationStatus.REJECTED,
-  ConsultationStatus.TIMEOUT,
-];
+// const CALLBACK_ELIGIBLE_STATUSES = [
+//   ConsultationStatus.PAID,
+//   ConsultationStatus.RINGING,
+//   ConsultationStatus.REJECTED,
+//   ConsultationStatus.TIMEOUT,
+// ];
 
 /**
  * Called when the customer's dashboard/consultation page loads. Lets the
@@ -357,6 +583,7 @@ export const ConsultationServices = {
   initiateConsultation,
   updateConsultationStatus,
   fetchPrescription,
+  reconcileStaleConsultations,
   getActiveConsultationForSocket,
   getMyConsultations,
   getMyConsultationCount,
