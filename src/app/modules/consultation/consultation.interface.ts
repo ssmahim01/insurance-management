@@ -85,19 +85,28 @@ export enum ConsultationStatus {
   FAILED = "FAILED",
 }
 
+export enum PrescriptionStatus {
+  NOT_APPLICABLE = "NOT_APPLICABLE", 
+  PENDING = "PENDING",               
+  READY = "READY",                   
+  FAILED = "FAILED",               
+}
+
 export interface IConsultation {
   customer: Types.ObjectId;
   subscription: Types.ObjectId;
   zaynaxBookingId?: string;
   zaynaxOrderType?: string;
-  // Stored so we can re-fetch booking details (e.g. for the prescription)
-  // after the call ends, without re-authenticating with Zaynax.
-  // select: false — never returned unless explicitly requested.
+
   zaynaxToken?: string;
   roomId?: string;
   doctorId?: string;
   doctorName?: string;
   status: ConsultationStatus;
+  callDurationSeconds?: number;    
+  prescriptionStatus: PrescriptionStatus;
+  prescriptionAttempts: number;     
+  lastPrescriptionCheckAt?: Date;
   failureReason?: string;
   callStartedAt?: Date;
   callEndedAt?: Date;

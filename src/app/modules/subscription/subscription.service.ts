@@ -911,9 +911,7 @@ const getAgentLeaderSubscriptions = async ({
 
   const meta = await queryBuilder.getMeta();
 
-  // =========================
   // STATS QUERY (scoped to this leader's agents)
-  // =========================
   const statsMatch = buildStatsMatch(
     { isDeleted: false, createdBy: { $in: agentIds } },
     dateType,
