@@ -305,7 +305,7 @@ const createSubscription = async (
     const paymentInitRes = await PaymentService.initPayment(
       subscription[0]._id,
     );
-
+     console.log("paymentInitRes ", paymentInitRes)
     await sendSMS(
       customer.phone,
       // `Your payment url is ${paymentInitRes?.paymentUrl}`,
