@@ -305,13 +305,6 @@ const createSubscription = async (
     const paymentInitRes = await PaymentService.initPayment(
       subscription[0]._id,
     );
-     console.log("paymentInitRes ", paymentInitRes)
-    await sendSMS(
-      customer.phone,
-      // `Your payment url is ${paymentInitRes?.paymentUrl}`,
-      `Thank you for choosing Surokkha.com! To activate your subscription, please complete your payment using the secure link below:\n\n${paymentInitRes?.paymentUrl}\n\nOnce your payment is successful, your subscription will be activated automatically.`,
-      MessageType.SUBSCRIPTION
-    );
 
     return {
       data: {
@@ -325,7 +318,6 @@ const createSubscription = async (
     throw error;
   }
 };
-
 
 // =========================================================
 // SHARED HELPERS (date filter + stats shape)

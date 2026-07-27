@@ -9,11 +9,9 @@ import { SSLCommerzService } from "../sslCommerz/sslCommerz.service";
 import { sendSMS } from "../../utils/sendSms";
 import { MessageType } from "../message/message.interface";
 import { PaymentModel } from "./payment.model";
-import { Subscription } from "../subscription/subscription.model";
 
 const initPayment = catchAsync(
     async (req: Request, res: Response) => {
-
         const result =
             await PaymentService.initPayment(
                 req.params.subscriptionId as string

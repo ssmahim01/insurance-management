@@ -15,6 +15,11 @@ router.all(
     PaymentController.paymentCancel
 );
 
+router.post(
+    "/init-payment/:subscriptionId",
+    PaymentController.initPayment
+);
+
 router.post("/validate-payment", PaymentController.validatePayment)
 router.patch(
     "/:id/request-refund",
