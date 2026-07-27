@@ -216,6 +216,8 @@ const getAllAgents = catchAsync(async (req: Request, res: Response) => {
     req.query as Record<string, string>,
   );
 
+  console.log("All agents ", result)
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
