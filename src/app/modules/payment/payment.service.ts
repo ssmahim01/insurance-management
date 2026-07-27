@@ -13,11 +13,14 @@ import { Subscription } from "../subscription/subscription.model";
 import { SubscriptionStatus } from "../subscription/subscription.interface";
 import { SurjoPayService } from "../surjoPay/surjoPay.service";
 
+import { sendSMS } from "../../utils/sendSms";
+import { MessageType } from "../message/message.interface";
+
 const initPayment = async (subscriptionId: any) => {
+
     const payment = await PaymentModel.findOne({
         subscription: subscriptionId,
     });
-
     if (!payment) {
         throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
     }
@@ -36,14 +39,11 @@ const initPayment = async (subscriptionId: any) => {
     const surjoPayPayload = {
         amount: payment.amount,
         orderId: payment.transactionId,
-
         customerName: customer.name,
         customerEmail: customer.email,
         customerPhone: customer.phone,
-
         customerAddress: customer?.address?.thana || "N/A",
         customerCity: customer?.address?.district || "N/A",
-
         customerCountry: "Bangladesh",
     };
 
@@ -51,98 +51,58 @@ const initPayment = async (subscriptionId: any) => {
         surjoPayPayload
     );
 
+    await sendSMS(
+        customer.phone,
+        `Thank you for choosing Surokkha.com! To activate your subscription, please complete your payment using the secure link below:\n\n${paymentResponse.checkoutUrl}\n\nOnce your payment is successful, your subscription will be activated automatically.`,
+        MessageType.SUBSCRIPTION
+    );
+
     return {
         paymentUrl: paymentResponse.checkoutUrl,
     };
 };
 
-// const updatePayment = async (id: string, payload: any) => {
-//     const existingPayment = await PaymentModel.findById(id);
+// const initPayment = async (subscriptionId: any) => {
 
-//     if (!existingPayment) {
+//     const payment = await PaymentModel.findOne({
+//         subscription: subscriptionId,
+//     });
+//     if (!payment) {
 //         throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
 //     }
 
-//     // Trigger the actual SSLCommerz refund BEFORE any DB write.
-//     // We only mark our DB as REFUNDED once the gateway confirms it.
-//     if (
-//         payload.status === PaymentStatus.REFUNDED &&
-//         existingPayment.status !== PaymentStatus.REFUNDED
-//     ) {
-//         const bankTranId = (existingPayment as any).paymentGatewayData?.bank_tran_id;
+//     const subscription = await Subscription.findById(subscriptionId);
 
-//         if (!bankTranId) {
-//             throw new AppError(
-//                 httpStatus.BAD_REQUEST,
-//                 "Cannot refund: bank transaction id not found. This payment may not have been validated by SSLCommerz yet."
-//             );
-//         }
+//     const customer = await User.findById(subscription?.customer);
 
-//         const refundResponse = await SSLCommerzService.initiateRefund({
-//             bank_tran_id: bankTranId,
-//             refund_amount: existingPayment.amount,
-//             refund_remarks: payload.refundRemarks || "Refund processed by admin",
-//         });
-
-//         // SSLCommerz replies "success" (instant) or "processing" (queued, poll later)
-//         if (
-//             refundResponse.status !== "success" &&
-//             refundResponse.status !== "processing"
-//         ) {
-//             throw new AppError(
-//                 httpStatus.BAD_REQUEST,
-//                 `SSLCommerz refund failed: ${refundResponse.errorReason || refundResponse.status || "unknown error"
-//                 }`
-//             );
-//         }
-
-//         // stash the gateway's refund response on the payment doc
-//         payload.refundData = refundResponse;
-//         payload.refundRefId = refundResponse.refund_ref_id;
-//         payload.refundedAt = new Date();
-//     }
-
-//     const session = await mongoose.startSession();
-
-//     try {
-//         session.startTransaction();
-
-//         const updatedPayment = await PaymentModel.findByIdAndUpdate(
-//             id,
-//             payload,
-//             { returnDocument: "after", runValidators: true, session }
+//     if (!customer) {
+//         throw new AppError(
+//             httpStatus.BAD_REQUEST,
+//             "Customer not found"
 //         );
-//         if (!updatedPayment) {
-//             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
-//         }
-
-//         if (payload.status) {
-//             const statusMap: Record<string, string> = {
-//                 [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
-//                 [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
-//                 [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
-//                 [PaymentStatus.REFUNDED]: SubscriptionStatus.REFUNDED,
-//             };
-//             const subscriptionStatus = statusMap[payload.status];
-
-//             if (subscriptionStatus) {
-//                 await Subscription.findByIdAndUpdate(
-//                     updatedPayment.subscription,
-//                     { status: subscriptionStatus },
-//                     { session }
-//                 );
-//             }
-//         }
-
-//         await session.commitTransaction();
-//         return { data: updatedPayment };
-
-//     } catch (error) {
-//         await session.abortTransaction();
-//         throw error;
-//     } finally {
-//         session.endSession();
 //     }
+
+//     const surjoPayPayload = {
+//         amount: payment.amount,
+//         orderId: payment.transactionId,
+
+//         customerName: customer.name,
+//         customerEmail: customer.email,
+//         customerPhone: customer.phone,
+
+//         customerAddress: customer?.address?.thana || "N/A",
+//         customerCity: customer?.address?.district || "N/A",
+
+//         customerCountry: "Bangladesh",
+//     };
+
+//     const paymentResponse = await SurjoPayService.paymentInit(
+//         surjoPayPayload
+//     );
+
+//     return {
+//         paymentUrl: paymentResponse.checkoutUrl,
+//     };
 // };
 
 const updatePayment = async (id: string, payload: any) => {
