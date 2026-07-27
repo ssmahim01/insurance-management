@@ -33,7 +33,7 @@ export const createUserZodSchema = z.object({
     message:
       "Phone must be valid Bangladesh number (017XXXXXXXX / +88017XXXXXXXX)",
   }),
-
+  employeeId: z.string().optional(),
   password: z.string().min(8).optional(),
 
   role: z
@@ -72,6 +72,8 @@ export const updateUserZodSchema = z.object({
   phone: z.string().regex(bdPhoneRegex).optional(),
 
   password: z.string().optional(),
+
+  employeeId: z.string().optional(),
 
   role: z
     .enum([

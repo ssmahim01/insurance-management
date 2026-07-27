@@ -42,6 +42,7 @@ export interface IUser {
   agentLeader?: Types.ObjectId; // only for agents
   
   customId?: string;
+  employeeId?: string;
 
   // BASIC INFO
   name: string; // full name (NID/Passport/Birth cert)

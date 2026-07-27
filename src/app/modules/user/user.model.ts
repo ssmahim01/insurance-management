@@ -41,6 +41,13 @@ const userSchema = new Schema<IUser>(
       index: true,
     },
 
+    employeeId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
     phone: {
       type: String,
       required: true,
