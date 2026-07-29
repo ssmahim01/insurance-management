@@ -26,6 +26,14 @@ const initPayment = catchAsync(
     }
 );
 
+const redirectPayment = catchAsync(async (req: Request, res: Response) => {
+    const { transactionId } = req.params;
+
+    const url = await PaymentService.getPaymentUrl(transactionId as string);
+
+    return res.redirect(url);
+});
+
 const getAllPayments = catchAsync(async (req: Request, res: Response) => {
     const result = await PaymentService.getAllPayments(
         req.query as Record<string, string>
@@ -209,5 +217,6 @@ export const PaymentController = {
     restorePayment,
     paymentCancel,
     paymentReturn,
-    requestSurjoPayRefund
+    requestSurjoPayRefund,
+    redirectPayment
 };

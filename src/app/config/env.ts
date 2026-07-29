@@ -36,6 +36,7 @@ interface EnvConfig {
   };
   COMPANY_EMAIL: string;
   FRONTEND_URL: string;
+  SERVER_URL: string;
   SSL: {
     SSL_STORE_ID: string,
     SSL_STORE_PASS: string,
@@ -88,6 +89,7 @@ const loadEnvVariables = (): EnvConfig => {
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
     "FRONTEND_URL",
+    "SERVER_URL",
     "SSL_STORE_ID",
     "SSL_STORE_PASS",
     "SSL_PAYMENT_API",
@@ -151,6 +153,7 @@ const loadEnvVariables = (): EnvConfig => {
     },
     COMPANY_EMAIL: process.env.COMPANY_EMAIL as string,
     FRONTEND_URL: process.env.FRONTEND_URL as string,
+    SERVER_URL: process.env.SERVER_URL as string,
     SSL: {
       SSL_STORE_ID: process.env.SSL_STORE_ID as string,
       SSL_STORE_PASS: process.env.SSL_STORE_PASS as string,
