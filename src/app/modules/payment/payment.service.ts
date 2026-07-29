@@ -15,6 +15,7 @@ import { SurjoPayService } from "../surjoPay/surjoPay.service";
 
 import { sendSMS } from "../../utils/sendSms";
 import { MessageType } from "../message/message.interface";
+import { envVars } from "../../config/env";
 
 const initPayment = async (subscriptionId: any) => {
 
@@ -51,9 +52,11 @@ const initPayment = async (subscriptionId: any) => {
         surjoPayPayload
     );
 
+    const paymentLink = `${envVars.SERVER_URL}/api/v1/payment/pay/${payment.transactionId}`;
+
     await sendSMS(
         customer.phone,
-        `Thank you for choosing Surokkha.com! To activate your subscription, please complete your payment using the secure link below:\n\n${paymentResponse.checkoutUrl}\n\nOnce your payment is successful, your subscription will be activated automatically.`,
+        `Thank you for choosing Surokkha.com! To activate your subscription, please complete your payment using the secure link below:\n\n${paymentLink}\n\nOnce your payment is successful, your subscription will be activated automatically.`,
         MessageType.SUBSCRIPTION
     );
 
@@ -62,48 +65,38 @@ const initPayment = async (subscriptionId: any) => {
     };
 };
 
-// const initPayment = async (subscriptionId: any) => {
+const getPaymentUrl = async (transactionId: string) => {
+    const payment = await PaymentModel.findOne({ transactionId });
 
-//     const payment = await PaymentModel.findOne({
-//         subscription: subscriptionId,
-//     });
-//     if (!payment) {
-//         throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
-//     }
+    if (!payment) {
+        throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+    }
 
-//     const subscription = await Subscription.findById(subscriptionId);
+    const subscription = await Subscription.findById(payment.subscription);
 
-//     const customer = await User.findById(subscription?.customer);
+    if (!subscription) {
+        throw new AppError(httpStatus.NOT_FOUND, "Subscription not found");
+    }
 
-//     if (!customer) {
-//         throw new AppError(
-//             httpStatus.BAD_REQUEST,
-//             "Customer not found"
-//         );
-//     }
+    const customer = await User.findById(subscription.customer);
 
-//     const surjoPayPayload = {
-//         amount: payment.amount,
-//         orderId: payment.transactionId,
+    if (!customer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+    }             
 
-//         customerName: customer.name,
-//         customerEmail: customer.email,
-//         customerPhone: customer.phone,
+    const paymentResponse = await SurjoPayService.paymentInit({
+        amount: payment.amount,
+        orderId: payment.transactionId,
+        customerName: customer.name,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+        customerAddress: customer?.address?.thana || "N/A",
+        customerCity: customer?.address?.district || "N/A",
+        customerCountry: "Bangladesh",
+    });
 
-//         customerAddress: customer?.address?.thana || "N/A",
-//         customerCity: customer?.address?.district || "N/A",
-
-//         customerCountry: "Bangladesh",
-//     };
-
-//     const paymentResponse = await SurjoPayService.paymentInit(
-//         surjoPayPayload
-//     );
-
-//     return {
-//         paymentUrl: paymentResponse.checkoutUrl,
-//     };
-// };
+    return paymentResponse.checkoutUrl;
+};
 
 const updatePayment = async (id: string, payload: any) => {
     const existingPayment = await PaymentModel.findById(id);
@@ -605,5 +598,6 @@ export const PaymentService = {
     deletePayment,
     getAllTrashPayments,
     restorePayment,
-    verifyAndFinalizePayment
+    verifyAndFinalizePayment,
+    getPaymentUrl,
 };

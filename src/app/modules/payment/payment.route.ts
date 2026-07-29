@@ -5,6 +5,8 @@ import { checkAuth } from "../../middlewares/checkAuth";
 
 const router = express.Router();
 
+router.get("/pay/:transactionId", PaymentController.redirectPayment);
+
 router.all(
     "/return",
     PaymentController.paymentReturn
@@ -19,6 +21,7 @@ router.post(
     "/init-payment/:subscriptionId",
     PaymentController.initPayment
 );
+
 
 router.post("/validate-payment", PaymentController.validatePayment)
 router.patch(
