@@ -16,6 +16,7 @@ const getDashboardOverview = catchAsync(async (req: Request, res: Response) => {
   switch (role) {
     case Role.SUPER_ADMIN:
     case Role.ADMIN:
+    case Role.A_A_MANAGER:
       result = await DashboardServices.getAdminDashboard();
       break;
 

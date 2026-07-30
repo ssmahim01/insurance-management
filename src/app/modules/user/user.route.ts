@@ -44,13 +44,13 @@ router.get(
 // ─── SUPER ADMIN / ADMIN — role-specific lists ─────────────────────────────
 router.get(
   "/all-agent-leaders",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.A_A_MANAGER),
   UserControllers.getAllAgentLeaders,
 );
 
 router.get(
   "/all-agents",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.A_A_MANAGER),
   UserControllers.getAllAgents,
 );
 
@@ -85,8 +85,20 @@ router.get(
 );
 
 router.get(
+  "/all-a-a-managers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllAAManagers,
+);
+
+router.get(
+  "/all-trash-a-a-managers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllTrashAAManagers,
+);
+
+router.get(
   "/all-customers",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT, Role.MANAGER),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT, Role.A_A_MANAGER),
   UserControllers.getAllCustomers,
 );
 
