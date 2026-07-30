@@ -216,8 +216,6 @@ const getAllAgents = catchAsync(async (req: Request, res: Response) => {
     req.query as Record<string, string>,
   );
 
-  console.log("All agents ", result)
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -415,6 +413,38 @@ const getAllTrashManagers = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Admin / Super Admin — retrieve all managers
+const getAllAAManagers = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllAAManagers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Assistant Area Managers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
+// Admin / Super Admin — retrieve all trash managers
+const getAllTrashAAManagers = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserServices.getAllTrashAAManagers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Trash Assistant Area Managers Retrieved Successfully",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
 // Agent Leader — retrieve customers of own agents (id from decoded token)
 const getMyAgentLeaderCustomers = catchAsync(
   async (req: Request, res: Response) => {
@@ -548,6 +578,8 @@ export const UserControllers = {
   getAllTrashAdmins,
   getAllManagers,
   getAllTrashManagers,
+  getAllAAManagers,
+  getAllTrashAAManagers,
   getMyAgentLeaderCustomers,
   getAgentLeaderCustomersByAdmin,
   getMyTrashAgents,

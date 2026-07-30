@@ -12,16 +12,6 @@ const addressSchema = z.object({
   street: z.string().optional(),
 });
 
-// NOMINEE VALIDATION
-// const nomineeSchema = z.object({
-//   name: z.string().optional(),
-//   age: z.number().min(0).optional(),
-//   relationship: z.string().optional(),
-//   phone: z
-//     .string()
-//     .optional(),
-// });
-
 // CREATE USER SCHEMA
 export const createUserZodSchema = z.object({
   name: z
@@ -34,8 +24,11 @@ export const createUserZodSchema = z.object({
       "Phone must be valid Bangladesh number (017XXXXXXXX / +88017XXXXXXXX)",
   }),
   employeeId: z.string().optional(),
+  email: z
+    .string()
+    .email({ message: "Please provide a valid email address." })
+    .optional(),
   password: z.string().min(8).optional(),
-
   role: z
     .enum([
       Role.SUPER_ADMIN,
@@ -44,6 +37,7 @@ export const createUserZodSchema = z.object({
       Role.CUSTOMER,
       Role.ADMIN,
       Role.MANAGER,
+      Role.A_A_MANAGER
     ])
     .optional(),
 
@@ -70,7 +64,10 @@ export const updateUserZodSchema = z.object({
   name: z.string().min(2).max(50).optional(),
 
   phone: z.string().regex(bdPhoneRegex).optional(),
-
+  email: z
+    .string()
+    .email({ message: "Please provide a valid email address." })
+    .optional(),
   password: z.string().optional(),
 
   employeeId: z.string().optional(),
@@ -82,7 +79,8 @@ export const updateUserZodSchema = z.object({
       Role.AGENT,
       Role.CUSTOMER,
       Role.ADMIN,
-      Role.MANAGER
+      Role.MANAGER,
+      Role.A_A_MANAGER
     ])
     .optional(),
 

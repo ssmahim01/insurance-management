@@ -1090,7 +1090,7 @@ const getCustomerSubscriptions = async ({
 
   // Admin/SuperAdmin can see ALL subscriptions of this customer.
   // Everyone else only sees subscriptions THEY created for this customer.
-  if (![Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT].includes(requesterRole)) {
+  if (![Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT_LEADER, Role.AGENT, Role.A_A_MANAGER].includes(requesterRole)) {
     filter.createdBy = requesterId;
   }
 

@@ -13,6 +13,7 @@ router.get(
     Role.SUPER_ADMIN,
     Role.ADMIN,
     Role.MANAGER,
+    Role.A_A_MANAGER,
     Role.AGENT_LEADER,
     Role.AGENT,
     Role.CUSTOMER,

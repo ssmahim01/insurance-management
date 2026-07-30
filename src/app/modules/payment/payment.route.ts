@@ -29,9 +29,9 @@ router.patch(
     checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
     PaymentController.requestSurjoPayRefund
 );
-router.get("/all-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.getAllPayments);
-router.get("/all-trash-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.getAllTrashPayments);
-router.get("/:id", checkAuth(Role.ADMIN, Role.CUSTOMER, Role.SUPER_ADMIN), PaymentController.getSinglePayment);
+router.get("/all-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.A_A_MANAGER), PaymentController.getAllPayments);
+router.get("/all-trash-payments", checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.A_A_MANAGER), PaymentController.getAllTrashPayments);
+router.get("/:id", checkAuth(Role.ADMIN, Role.CUSTOMER, Role.SUPER_ADMIN, Role.A_A_MANAGER), PaymentController.getSinglePayment);
 router.patch("/:id", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.updatePayment);
 router.patch("/restore/:id", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.restorePayment);
 router.delete("/soft-delete/:id", checkAuth(Role.ADMIN, Role.SUPER_ADMIN), PaymentController.softDeletePayment);

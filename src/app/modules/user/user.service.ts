@@ -209,14 +209,6 @@ const updateUser = async (
   };
 };
 
-// const getMe = async (userId: string) => {
-//   const user = await User.findById(userId).select("-password");
-
-
-
-//   return { data: user };
-// };
-
 const getMe = async (userId: string) => {
   const user = await User.findById(userId).select("+password");
 
@@ -809,6 +801,72 @@ const getAllTrashManagers = async (query: Record<string, string>) => {
   return { data, meta, stats };
 };
 
+// Admin / Super Admin — retrieve all managers
+const getAllAAManagers = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.A_A_MANAGER,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.A_A_MANAGER,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
+// Admin / Super Admin — retrieve all trash managers
+const getAllTrashAAManagers = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.A_A_MANAGER,
+    isDeleted: true,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.A_A_MANAGER,
+    isDeleted: true,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return { data, meta, stats };
+};
+
 // Single service — accepts agentLeaderId as param.
 // Agent Leader (self): controller passes id from decoded token.
 // Admin / Super Admin: controller passes id from route params.
@@ -1107,6 +1165,8 @@ export const UserServices = {
   getAllTrashAdmins,
   getAllManagers,
   getAllTrashManagers,
+  getAllAAManagers,
+  getAllTrashAAManagers,
   getAllAgentLeaderCustomers,
   getCustomersByAgent,
 };

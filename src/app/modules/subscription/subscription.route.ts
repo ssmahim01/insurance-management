@@ -16,7 +16,7 @@ router.post(
 
 router.get(
   "/all-subscriptions",
-  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.A_A_MANAGER),
   SubscriptionControllers.getAllSubscriptions,
 );
 
@@ -28,7 +28,7 @@ router.get(
 
 router.get(
   "/agents-all-subscriptions/:id",
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER),
+  checkAuth(Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT_LEADER, Role.A_A_MANAGER),
   SubscriptionControllers.getAgentsAllSubscriptions,
 );
 router.get(

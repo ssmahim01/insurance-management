@@ -251,6 +251,8 @@ const getCustomerSubscriptions = catchAsync(
       requesterRole,
     });
 
+    console.log("Customer subs ", result)
+
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
