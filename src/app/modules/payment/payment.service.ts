@@ -217,7 +217,7 @@ const getPaymentStats = async (match: Record<string, any>) => {
             $group: {
                 _id: null,
                 total: { $sum: 1 },
-                completed: { $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] } },
+                completed: { $sum: { $cond: [{ $eq: ["$status", "PAID"] }, 1, 0] } },
                 unpaid: { $sum: { $cond: [{ $eq: ["$status", "UNPAID"] }, 1, 0] } },
                 failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } },

@@ -61,7 +61,7 @@ const buildMatch = (
 ) => {
   const match: Record<string, any> = {
     isDeleted: false,
-    paymentStatus: PaymentStatus.PAID,
+    paymentStatus: PaymentStatus.COMPLETED,
   };
 
   if (creatorIds?.length) {
@@ -268,7 +268,7 @@ const getCustomerSummary = async (
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 "$price",
                 0,
@@ -1293,7 +1293,7 @@ const getAdminSummary = async (): Promise<IDashboardSummary> => {
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 "$price",
                 0,
@@ -1357,7 +1357,7 @@ const getAdminSummary = async (): Promise<IDashboardSummary> => {
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 1,
                 0,
