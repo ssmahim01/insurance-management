@@ -171,7 +171,7 @@ const getDashboardSummary = async (
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 1,
                 0,
@@ -332,7 +332,7 @@ const getCustomerSummary = async (
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 1,
                 0,
@@ -1454,7 +1454,7 @@ const getAgentLeaderSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                    $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                   },
                   "$price",
                   0,
@@ -1518,7 +1518,7 @@ const getAgentLeaderSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: ["$paymentStatus", PaymentStatus.PAID],
+                    $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                   },
                   1,
                   0,
@@ -1613,7 +1613,7 @@ const getAgentSummary = async (
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 "$price",
                 0,
@@ -1677,7 +1677,7 @@ const getAgentSummary = async (
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentStatus", PaymentStatus.PAID],
+                  $eq: ["$paymentStatus", PaymentStatus.COMPLETED],
                 },
                 1,
                 0,
