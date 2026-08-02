@@ -40,6 +40,9 @@ export const createUserZodSchema = z.object({
       Role.A_A_MANAGER
     ])
     .optional(),
+  isActive: z
+    .enum([IsActive.ACTIVE, IsActive.INACTIVE, IsActive.BLOCKED, IsActive.CREATED])
+    .optional(),
 
   customId: z.string().optional(),
 
@@ -87,7 +90,7 @@ export const updateUserZodSchema = z.object({
   picture: z.string().optional(),
 
   isActive: z
-    .enum([IsActive.ACTIVE, IsActive.INACTIVE, IsActive.BLOCKED])
+    .enum([IsActive.ACTIVE, IsActive.INACTIVE, IsActive.BLOCKED, IsActive.CREATED])
     .optional(),
 
   isDeleted: z.boolean().optional(),

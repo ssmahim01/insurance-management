@@ -164,11 +164,11 @@ const updateUser = async (
 
   const isSuperAdmin = decodedToken.role === Role.SUPER_ADMIN;
 
-  const isAdminOrSuperAdmin  =
+  const isAdminOrSuperAdmin =
     decodedToken.role === Role.SUPER_ADMIN ||
     decodedToken.role === Role.ADMIN;
 
-  if (!isAdminOrSuperAdmin  && payload.password) {
+  if (!isAdminOrSuperAdmin && payload.password) {
     delete payload.password;
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -176,7 +176,7 @@ const updateUser = async (
     );
   }
 
-  if (isAdminOrSuperAdmin  && payload.password) {
+  if (isAdminOrSuperAdmin && payload.password) {
     payload.password = await bcryptjs.hash(
       payload.password,
       Number(envVars.BCRYPT_SALT_ROUND)
@@ -184,7 +184,7 @@ const updateUser = async (
   }
 
   // Only Super Admin and admin can modify these protected fields
-  if (!isAdminOrSuperAdmin  ) {
+  if (!isAdminOrSuperAdmin) {
     delete payload.role;
     delete payload.isDeleted;
     delete payload.isVerified;
@@ -558,7 +558,16 @@ const getAllCustomers = async (query: Record<string, string>) => {
       .fields()
       .paginate()
       .build()
-      .populate("createdBy", "name phone role"),
+      // .populate("createdBy", "name phone role")
+      // .populate("agentLeader", "name phone role"),
+      .populate({
+        path: "createdBy",
+        select: "name phone role agentLeader",
+        populate: {
+          path: "agentLeader",
+          select: "name phone role",
+        },
+      }),
     queryBuilder.getMeta(),
   ]);
 

@@ -9,6 +9,8 @@ import { SSLCommerzService } from "../sslCommerz/sslCommerz.service";
 import { sendSMS } from "../../utils/sendSms";
 import { MessageType } from "../message/message.interface";
 import { PaymentModel } from "./payment.model";
+import { User } from "../user/user.model";
+import { IsActive } from "../user/user.interface";
 
 const initPayment = catchAsync(
     async (req: Request, res: Response) => {
@@ -158,6 +160,12 @@ const paymentReturn = catchAsync(
             });
 
             const customerPhone = (payment?.subscription as any)?.customer?.phone;
+            const customerId = (payment?.subscription as any)?.customer?._id;
+
+            await User.findByIdAndUpdate(
+                customerId,
+                { isActive: IsActive.ACTIVE }
+            );
 
             await sendSMS(
                 customerPhone,

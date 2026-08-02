@@ -14,7 +14,7 @@ import { subscriptionSearchableFields } from "./subscription.constants";
 import { User } from "../user/user.model";
 import { UserServices } from "../user/user.service";
 import mongoose, { Types } from "mongoose";
-import { Role } from "../user/user.interface";
+import { IsActive, Role } from "../user/user.interface";
 import { InsurancePackage } from "../package/insurancePackage.model";
 import { PaymentModel } from "../payment/payment.model";
 import { PaymentService } from "../payment/payment.service";
@@ -112,6 +112,7 @@ const createSubscription = async (
         const createdCustomer = await UserServices.createUserService({
           ...payload.customerPayload,
           role: Role.CUSTOMER,
+          isActive: IsActive.CREATED,
           createdBy: new Types.ObjectId(userId),
         });
 
@@ -1097,7 +1098,15 @@ const getCustomerSubscriptions = async ({
   const subscriptions = await Subscription.find(filter)
     .populate("customer", "name phone")
     .populate("package", "name slug description coverageAmount")
-    .populate("createdBy", "name phone role")
+    // .populate("createdBy", "name phone role")
+    .populate({
+      path: "createdBy",
+      select: "name phone role agentLeader",
+      populate: {
+        path: "agentLeader",
+        select: "name phone role",
+      },
+    })
     .sort({ createdAt: -1 });
 
   return subscriptions;
