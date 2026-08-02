@@ -16,6 +16,7 @@ import { SurjoPayService } from "../surjoPay/surjoPay.service";
 import { sendSMS } from "../../utils/sendSms";
 import { MessageType } from "../message/message.interface";
 import { envVars } from "../../config/env";
+import { IsActive } from "../user/user.interface";
 
 const initPayment = async (subscriptionId: any) => {
 
@@ -125,10 +126,18 @@ const updatePayment = async (id: string, payload: any) => {
             id,
             payload,
             { returnDocument: "after", runValidators: true, session }
-        );
+        ).populate({
+            path: "subscription",
+            populate: {
+                path: "customer",
+                select: "phone name _id",
+            },
+        });;
         if (!updatedPayment) {
             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
         }
+
+        const customer = (updatedPayment?.subscription as any)?.customer?._id;
 
         if (payload.status === PaymentStatus.PAID) {
             await Subscription.findByIdAndUpdate(
@@ -138,6 +147,12 @@ const updatePayment = async (id: string, payload: any) => {
                     status: SubscriptionStatus.ACTIVE,
                     isActive: true,
                 },
+                { session }
+            );
+
+            await User.findByIdAndUpdate(
+                customer,
+                { isActive: IsActive.ACTIVE },
                 { session }
             );
         } else if (payload.status === PaymentStatus.FAILED) {

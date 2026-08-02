@@ -15,6 +15,7 @@ export enum IsActive {
   ACTIVE = "ACTIVE",
   INACTIVE = "INACTIVE",
   BLOCKED = "BLOCKED",
+  CREATED = "CREATED",
 }
 
 export interface IAddress {
@@ -37,11 +38,11 @@ export interface INominee {
 
 export interface IUser {
   _id?: Types.ObjectId;
-  
+
   createdBy?: Types.ObjectId;
-  
+
   agentLeader?: Types.ObjectId; // only for agents
-  
+
   customId?: string;
   employeeId?: string;
 
