@@ -82,7 +82,7 @@ const getPaymentUrl = async (transactionId: string) => {
 
     if (!customer) {
         throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
-    }             
+    }
 
     const paymentResponse = await SurjoPayService.paymentInit({
         amount: payment.amount,
@@ -130,21 +130,36 @@ const updatePayment = async (id: string, payload: any) => {
             throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
         }
 
-        if (payload.status) {
-            const statusMap: Record<string, string> = {
-                [PaymentStatus.COMPLETED]: SubscriptionStatus.ACTIVE,
-                [PaymentStatus.FAILED]: SubscriptionStatus.FAILED,
-                [PaymentStatus.CANCELLED]: SubscriptionStatus.CANCELLED,
-            };
-            const subscriptionStatus = statusMap[payload.status];
-
-            if (subscriptionStatus) {
-                await Subscription.findByIdAndUpdate(
-                    updatedPayment.subscription,
-                    { status: subscriptionStatus },
-                    { session }
-                );
-            }
+        if (payload.status === PaymentStatus.PAID) {
+            await Subscription.findByIdAndUpdate(
+                updatedPayment.subscription,
+                {
+                    paymentStatus: PaymentStatus.COMPLETED,
+                    status: SubscriptionStatus.ACTIVE,
+                    isActive: true,
+                },
+                { session }
+            );
+        } else if (payload.status === PaymentStatus.FAILED) {
+            await Subscription.findByIdAndUpdate(
+                updatedPayment.subscription,
+                {
+                    paymentStatus: PaymentStatus.FAILED,
+                    status: SubscriptionStatus.FAILED,
+                    isActive: false,
+                },
+                { session }
+            );
+        } else if (payload.status === PaymentStatus.CANCELLED) {
+            await Subscription.findByIdAndUpdate(
+                updatedPayment.subscription,
+                {
+                    paymentStatus: PaymentStatus.CANCELLED,
+                    status: SubscriptionStatus.CANCELLED,
+                    isActive: false,
+                },
+                { session }
+            );
         }
 
         await session.commitTransaction();

@@ -164,11 +164,27 @@ const updateUser = async (
 
   const isSuperAdmin = decodedToken.role === Role.SUPER_ADMIN;
 
-  // Password must always be changed through Auth module
-  delete payload.password;
+  const isAdminOrSuperAdmin  =
+    decodedToken.role === Role.SUPER_ADMIN ||
+    decodedToken.role === Role.ADMIN;
 
-  // Only Super Admin can modify these protected fields
-  if (!isSuperAdmin) {
+  if (!isAdminOrSuperAdmin  && payload.password) {
+    delete payload.password;
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Password can only be changed by Super Admin or Admin"
+    );
+  }
+
+  if (isAdminOrSuperAdmin  && payload.password) {
+    payload.password = await bcryptjs.hash(
+      payload.password,
+      Number(envVars.BCRYPT_SALT_ROUND)
+    );
+  }
+
+  // Only Super Admin and admin can modify these protected fields
+  if (!isAdminOrSuperAdmin  ) {
     delete payload.role;
     delete payload.isDeleted;
     delete payload.isVerified;
