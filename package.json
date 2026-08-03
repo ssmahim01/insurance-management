@@ -7,6 +7,7 @@
     "migrate:deliveredAt": "ts-node-dev --transpile-only src/scripts/migrateDeliveredAt.ts",
     "lint": "npx eslint ./src",
     "clear:db": "ts-node-dev src/scripts/clearDB.ts",
+    "generate:secret": "ts-node-dev src/scripts/generateSecret.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"

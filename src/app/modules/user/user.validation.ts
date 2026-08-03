@@ -37,7 +37,8 @@ export const createUserZodSchema = z.object({
       Role.CUSTOMER,
       Role.ADMIN,
       Role.MANAGER,
-      Role.A_A_MANAGER
+      Role.A_A_MANAGER,
+      Role.CLAIMS_MANAGER
     ])
     .optional(),
   isActive: z
@@ -83,7 +84,8 @@ export const updateUserZodSchema = z.object({
       Role.CUSTOMER,
       Role.ADMIN,
       Role.MANAGER,
-      Role.A_A_MANAGER
+      Role.A_A_MANAGER,
+       Role.CLAIMS_MANAGER
     ])
     .optional(),
 
