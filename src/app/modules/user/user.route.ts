@@ -55,6 +55,18 @@ router.get(
 );
 
 router.get(
+  "/claims-managers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllClaimsManagers,
+);
+
+router.get(
+  "/trash/claims-managers",
+  checkAuth(Role.SUPER_ADMIN, Role.ADMIN),
+  UserControllers.getAllTrashClaimsManagers,
+);
+
+router.get(
   "/all-trash-agents",
   checkAuth(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER),
   UserControllers.getAllTrashAgents,

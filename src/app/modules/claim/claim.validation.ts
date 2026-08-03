@@ -1,51 +1,188 @@
 import { z } from "zod";
-import { ClaimStatus } from "./claim.interface";
+import {
+  ClaimStatus,
+  ClaimTitle,
+  PaymentMethod,
+} from "./claim.interface";
 
-export const createClaimValidationSchema = z.object({
-  customer: z
-    .string({
-      required_error: "Customer is required",
-    })
-    .min(1, "Customer is required"),
+export const createClaimValidationSchema = z
+  .object({
+    customer: z.string().min(1, "Customer is required"),
 
-  subscription: z
-    .string({
-      required_error: "Subscription is required",
-    })
-    .min(1, "Subscription is required"),
+    subscription: z.string().min(1, "Subscription is required"),
 
-  serviceTitle: z
-    .string({
-      required_error: "Service title is required",
-    })
-    .min(2, "Service title must be at least 2 characters"),
+    claimTitle: z.nativeEnum(ClaimTitle, {
+      required_error: "Claim title is required",
+    }),
 
-  description: z
-    .string({
-      required_error: "Description is required",
-    })
-    .min(5, "Description must be at least 5 characters"),
+    description: z
+      .string()
+      .min(10, "Description must be at least 10 characters"),
 
-  attachments: z
-    .array(z.string())
-    .optional(),
-});
+    paymentMethod: z.nativeEnum(PaymentMethod, {
+      required_error: "Receive payment method is required",
+    }),
 
-export const updateClaimValidationSchema = z.object({
-  serviceTitle: z
-    .string()
-    .min(2)
-    .optional(),
+    paymentInfo: z
+      .object({
+        mobileNumber: z.string().optional(),
 
-  description: z
-    .string()
-    .min(5)
-    .optional(),
+        bankName: z.string().optional(),
 
-  attachments: z
-    .array(z.string())
-    .optional(),
-});
+        accountName: z.string().optional(),
+
+        accountNumber: z.string().optional(),
+
+        routingNumber: z.string().optional(),
+
+        branchName: z.string().optional(),
+      })
+      .optional(),
+
+    attachments: z.array(z.string()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // BKASH / NAGAD
+    if (
+      data.paymentMethod === PaymentMethod.BKASH ||
+      data.paymentMethod === PaymentMethod.NAGAD
+    ) {
+      if (!data.paymentInfo?.mobileNumber) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "mobileNumber"],
+          message: "Mobile number is required.",
+        });
+      }
+    }
+
+    // BANK
+    if (data.paymentMethod === PaymentMethod.BANK) {
+      const bank = data.paymentInfo;
+
+      if (!bank?.bankName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "bankName"],
+          message: "Bank name is required.",
+        });
+      }
+
+      if (!bank?.accountName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "accountName"],
+          message: "Account holder name is required.",
+        });
+      }
+
+      if (!bank?.accountNumber) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "accountNumber"],
+          message: "Account number is required.",
+        });
+      }
+
+      if (!bank?.routingNumber) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "routingNumber"],
+          message: "Routing number is required.",
+        });
+      }
+
+      if (!bank?.branchName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "branchName"],
+          message: "Branch name is required.",
+        });
+      }
+    }
+  });
+
+export const updateClaimValidationSchema = z
+  .object({
+    claimTitle: z.nativeEnum(ClaimTitle).optional(),
+
+    description: z.string().min(10).optional(),
+
+    paymentMethod: z.nativeEnum(PaymentMethod).optional(),
+
+    paymentInfo: z
+      .object({
+        mobileNumber: z.string().optional(),
+
+        bankName: z.string().optional(),
+
+        accountName: z.string().optional(),
+
+        accountNumber: z.string().optional(),
+
+        routingNumber: z.string().optional(),
+
+        branchName: z.string().optional(),
+      })
+      .optional(),
+
+    attachments: z.array(z.string()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.paymentMethod) return;
+
+    if (
+      data.paymentMethod === PaymentMethod.BKASH ||
+      data.paymentMethod === PaymentMethod.NAGAD
+    ) {
+      if (!data.paymentInfo?.mobileNumber) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "mobileNumber"],
+          message: "Mobile number is required.",
+        });
+      }
+    }
+
+    if (data.paymentMethod === PaymentMethod.BANK) {
+      const bank = data.paymentInfo;
+
+      if (!bank?.bankName)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "bankName"],
+          message: "Bank name is required.",
+        });
+
+      if (!bank?.accountName)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "accountName"],
+          message: "Account holder name is required.",
+        });
+
+      if (!bank?.accountNumber)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "accountNumber"],
+          message: "Account number is required.",
+        });
+
+      if (!bank?.routingNumber)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "routingNumber"],
+          message: "Routing number is required.",
+        });
+
+      if (!bank?.branchName)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentInfo", "branchName"],
+          message: "Branch name is required.",
+        });
+    }
+  });
 
 export const reviewClaimValidationSchema = z.object({
   status: z.enum([
@@ -53,7 +190,5 @@ export const reviewClaimValidationSchema = z.object({
     ClaimStatus.REJECTED,
   ]),
 
-  adminNote: z
-    .string()
-    .optional(),
+  adminNote: z.string().optional(),
 });

@@ -23,7 +23,6 @@ router.post(
         Role.AGENT_LEADER,
     ),
     multerUpload.array("attachments", 10),
-    validateRequest(createClaimValidationSchema),
     ClaimController.createClaim,
 );
 
@@ -34,6 +33,7 @@ router.get(
         Role.SUPER_ADMIN,
         Role.ADMIN,
         Role.AGENT_LEADER,
+        Role.CLAIMS_MANAGER,
         Role.AGENT,
         Role.CUSTOMER,
     ),
@@ -58,6 +58,7 @@ router.get(
     checkAuth(
         Role.SUPER_ADMIN,
         Role.ADMIN,
+        Role.CLAIMS_MANAGER,
         Role.AGENT_LEADER,
         Role.AGENT,
         Role.CUSTOMER,
@@ -69,9 +70,7 @@ router.patch(
   "/:id",
   checkAuth(Role.CUSTOMER),
   multerUpload.array("attachments", 10),
-  validateRequest(
-    updateClaimValidationSchema,
-  ),
+ 
   ClaimController.updateClaim,
 );
 
@@ -81,6 +80,7 @@ router.patch(
     checkAuth(
         Role.SUPER_ADMIN,
         Role.ADMIN,
+        Role.CLAIMS_MANAGER,
     ),
     validateRequest(
         reviewClaimValidationSchema,

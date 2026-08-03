@@ -408,6 +408,7 @@ const getAllUsers = async (query: Record<string, string>) => {
     agentLeader: roleMap[Role.AGENT_LEADER] || { ...empty },
     agent: roleMap[Role.AGENT] || { ...empty },
     customer: roleMap[Role.CUSTOMER] || { ...empty },
+    claimsManager: roleMap[Role.CLAIMS_MANAGER] || { ...empty },
   };
 
   return { data, meta, stats };
@@ -791,6 +792,80 @@ const getAllManagers = async (query: Record<string, string>) => {
   });
 
   return { data, meta, stats };
+};
+
+const getAllClaimsManagers = async (query: Record<string, string>) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.CLAIMS_MANAGER,
+    isDeleted: false,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CLAIMS_MANAGER,
+    isDeleted: false,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return {
+    data,
+    meta,
+    stats,
+  };
+};
+
+const getAllTrashClaimsManagers = async (
+  query: Record<string, string>,
+) => {
+  const { dateFilter, startDateStr, endDateStr } = buildQueryObj(query);
+
+  const baseMatch = {
+    role: Role.CLAIMS_MANAGER,
+    isDeleted: true,
+    ...dateFilter,
+  };
+
+  const queryBuilder = new QueryBuilder(User.find(baseMatch), query);
+
+  const [data, meta] = await Promise.all([
+    queryBuilder
+      .filter()
+      .search(userSearchableFields)
+      .sort()
+      .fields()
+      .paginate()
+      .build()
+      .populate("createdBy", "name phone role"),
+    queryBuilder.getMeta(),
+  ]);
+
+  const stats = await getUserStats({
+    role: Role.CLAIMS_MANAGER,
+    isDeleted: true,
+    ...buildDateFilter(startDateStr, endDateStr),
+  });
+
+  return {
+    data,
+    meta,
+    stats,
+  };
 };
 
 // Admin / Super Admin — retrieve all trash managers
@@ -1181,6 +1256,9 @@ export const UserServices = {
   getMyTrashAgents,
   getMyCustomers,
   getMyCustomersByLeader,
+  getAllTrashClaimsManagers,
+  getAllClaimsManagers,
+
   getMyTrashCustomers,
   getMyAgents,
   getAllAgents,

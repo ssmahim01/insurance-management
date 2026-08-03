@@ -79,7 +79,7 @@ const getAllClaims = async ({
   user: { userId: string; role: string };
 }) => {
   const isAdminLevel =
-    user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+    user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN || user.role === Role.CLAIMS_MANAGER;
 
   // Capture before deletion so stats can reuse the same range
   const startDateStr = query["startDate"];
@@ -287,8 +287,8 @@ const reviewClaim = async (
     : "Claim Rejected";
 
   const notificationMessage = isApproved
-    ? `Your claim "${claim.serviceTitle}" has been approved.${payload.adminNote ? ` Note: ${payload.adminNote}` : ""}`
-    : `Your claim "${claim.serviceTitle}" has been rejected.${payload.adminNote ? ` Reason: ${payload.adminNote}` : ""}`;
+    ? `Your ${claim.claimTitle} claim has been approved.${payload.adminNote ? ` Note: ${payload.adminNote}` : ""}`
+    : `Your ${claim.claimTitle} claim has been rejected.${payload.adminNote ? ` Reason: ${payload.adminNote}` : ""}`;
 
   await Notification.create({
     user: customer._id,

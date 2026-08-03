@@ -6,14 +6,39 @@ export enum ClaimStatus {
   REJECTED = "REJECTED",
 }
 
+export enum ClaimTitle {
+  OPD = "OPD",
+  HOSPITAL_COVERAGE = "HOSPITAL_COVERAGE",
+  PREGNANCY_COVERAGE = "PREGNANCY_COVERAGE",
+  PARTIAL_DISABILITY = "PARTIAL_DISABILITY",
+  PERMANENT_DISABILITY = "PERMANENT_DISABILITY",
+  LIFE_COVERAGE = "LIFE_COVERAGE",
+}
+
+export enum PaymentMethod {
+  BKASH = "BKASH",
+  NAGAD = "NAGAD",
+  BANK = "BANK",
+}
+
 export interface IClaim {
   _id?: Types.ObjectId;
 
   customer: Types.ObjectId;
+  paymentInfo: {
+    mobileNumber: string;
+
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    routingNumber: string;
+    branchName: string;
+  };
+  claimTitle: ClaimTitle;
 
   subscription: Types.ObjectId;
 
-  serviceTitle: string;
+  paymentMethod: PaymentMethod;
 
   description: string;
 

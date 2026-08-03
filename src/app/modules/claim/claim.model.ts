@@ -1,7 +1,9 @@
 import { model, Schema } from "mongoose";
 import {
   ClaimStatus,
+  ClaimTitle,
   IClaim,
+  PaymentMethod,
 } from "./claim.interface";
 
 const claimSchema = new Schema<IClaim>(
@@ -18,12 +20,6 @@ const claimSchema = new Schema<IClaim>(
       ref: "Subscription",
       required: true,
       index: true,
-    },
-
-    serviceTitle: {
-      type: String,
-      required: true,
-      trim: true,
     },
 
     description: {
@@ -43,7 +39,26 @@ const claimSchema = new Schema<IClaim>(
       default: ClaimStatus.PENDING,
       index: true,
     },
+    claimTitle: {
+    type: String,
+    enum: Object.values(ClaimTitle),
+    required: true,
+    index: true,
+},
+paymentMethod: {
+    type: String,
+    enum: Object.values(PaymentMethod),
+    required: true,
+},
+paymentInfo: {
+    mobileNumber: String,
 
+    bankName: String,
+    accountName: String,
+    accountNumber: String,
+    routingNumber: String,
+    branchName: String,
+},
     adminNote: {
       type: String,
       default: "",

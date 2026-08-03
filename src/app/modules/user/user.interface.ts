@@ -8,6 +8,7 @@ export enum Role {
   AGENT = "AGENT",
   CUSTOMER = "CUSTOMER",
   MANAGER = "MANAGER",
+   CLAIMS_MANAGER = "CLAIMS_MANAGER",
   A_A_MANAGER = "A_A_MANAGER",
 }
 

@@ -1,5 +1,5 @@
 export const claimSearchableFields = [
-  "serviceTitle",
+  "claimTitle",
   "description",
   "adminNote",
 ];

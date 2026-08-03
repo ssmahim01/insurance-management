@@ -265,6 +265,32 @@ const updateProfile = catchAsync(
   },
 );
 
+const getAllClaimsManagers = catchAsync(async (req, res) => {
+  const result = await UserServices.getAllClaimsManagers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Claims managers retrieved successfully",
+    data: result,
+  });
+});
+
+const getAllTrashClaimsManagers = catchAsync(async (req, res) => {
+  const result = await UserServices.getAllTrashClaimsManagers(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Deleted claims managers retrieved successfully",
+    data: result,
+  });
+});
+
 const updateUserTrash = catchAsync(async (req: Request, res: Response) => {
   const id = req.params.id as string;
 
@@ -585,6 +611,8 @@ export const UserControllers = {
   getMyTrashAgents,
   getMyCustomersByLeader,
   getMyTrashCustomers,
+  getAllTrashClaimsManagers,
+  getAllClaimsManagers,
   getMyAgentCustomers,
   getAgentCustomersByAdmin,
   getAgentCustomersByLeader,
