@@ -12,6 +12,14 @@ const addressSchema = z.object({
   street: z.string().optional(),
 });
 
+const nomineeSchema = z.object({
+  name: z.string().optional(),
+  phone: z.string().regex(bdPhoneRegex, {
+    message:
+      "Phone must be valid Bangladesh number (017XXXXXXXX / +88017XXXXXXXX)",
+  }),
+});
+
 // CREATE USER SCHEMA
 export const createUserZodSchema = z.object({
   name: z
@@ -60,7 +68,7 @@ export const createUserZodSchema = z.object({
 
   address: addressSchema.optional(),
 
-  // nominee: nomineeSchema.optional(),
+  nominee: nomineeSchema.optional(),
 });
 
 // UPDATE USER SCHEMA
@@ -85,7 +93,7 @@ export const updateUserZodSchema = z.object({
       Role.ADMIN,
       Role.MANAGER,
       Role.A_A_MANAGER,
-       Role.CLAIMS_MANAGER
+      Role.CLAIMS_MANAGER
     ])
     .optional(),
 
@@ -110,5 +118,5 @@ export const updateUserZodSchema = z.object({
 
   address: addressSchema.optional(),
 
-  // nominee: nomineeSchema.optional(),
+  nominee: nomineeSchema.optional(),
 });
