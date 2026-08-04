@@ -17,8 +17,6 @@ const addressSchema = new Schema(
 const nomineeSchema = new Schema(
   {
     name: { type: String },
-    age: { type: Number },
-    relationship: { type: String },
     phone: { type: String },
   },
   { _id: false },
@@ -112,9 +110,9 @@ const userSchema = new Schema<IUser>(
     },
 
     // NOMINEE INFO
-    // nominee: {
-    //   type: nomineeSchema,
-    // },
+    nominee: {
+      type: nomineeSchema,
+    },
 
     // SYSTEM FLAGS
     isDeleted: {

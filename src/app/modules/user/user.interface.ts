@@ -8,7 +8,7 @@ export enum Role {
   AGENT = "AGENT",
   CUSTOMER = "CUSTOMER",
   MANAGER = "MANAGER",
-   CLAIMS_MANAGER = "CLAIMS_MANAGER",
+  CLAIMS_MANAGER = "CLAIMS_MANAGER",
   A_A_MANAGER = "A_A_MANAGER",
 }
 
@@ -30,8 +30,6 @@ export interface IAddress {
 
 export interface INominee {
   name?: string;
-  age?: number;
-  relationship?: string;
   phone?: string;
 }
 
@@ -60,19 +58,20 @@ export interface IUser {
 
   role: Role;
 
-  // CUSTOMER SPECIFIC INFO
+  nominee?: INominee;   // NOMINEE INFO (Staff ONLY)
+
   nid?: string;
-
+  
   dateOfBirth?: Date;
-
+  
   gender?: "MALE" | "FEMALE" | "OTHER";
-
+  
   address?: IAddress;
-
+  
   salary?: string;
-
+  
   salaryPerCustomer?: string;
-
+  
   // SYSTEM FLAGS
   isActive?: IsActive;
 
